@@ -9,15 +9,15 @@ import pywt
 
 
 def prepare_arrays(cab,lai,feffef):
-    completename = 'cwavelets/libradtranscope/floxseries_ae_oen/reflectance/radcomplete_{}_{:d}_{:d}_ae_conv.dat'.format(feffef,cab,lai)
-    woFname = 'cwavelets/libradtranscope/floxseries_ae_oen/reflectance/radwoF_{}_{:d}_{:d}_ae_conv.dat'.format(feffef,cab,lai)
-    reflname = 'reflectance/szamatch/rho_scope_{}_{:d}_{:d}'.format(feffef,cab,lai)
-    albedoname = 'reflectance/szamatch/albedo_scope_{}_{:d}_{:d}'.format(feffef,cab,lai)
-    scoperef = 'LupSCOPE/szamatch/Lup_scope_{}_{:d}_{:d}'.format(feffef,cab,lai)
-    Fname = 'cwavelets/libradtranscope/floxseries_ae_oen/reflectance/Fcomp_{}_{:d}_{:d}_ae.dat'.format(feffef,cab,lai) #'fluorescence/F_scope_{}_{:d}_{:d}'.format(feffef,cab,lai)
+    completename = '../cwavelets/libradtranscope/floxseries_ae_oen/reflectance/radcomplete_{}_{:d}_{:d}_ae_conv.dat'.format(feffef,cab,lai)
+    woFname = '../cwavelets/libradtranscope/floxseries_ae_oen/reflectance/radwoF_{}_{:d}_{:d}_ae_conv.dat'.format(feffef,cab,lai)
+    reflname = '../reflectance/szamatch/rho_scope_{}_{:d}_{:d}'.format(feffef,cab,lai)
+    albedoname = '../reflectance/szamatch/albedo_scope_{}_{:d}_{:d}'.format(feffef,cab,lai)
+    scoperef = '../LupSCOPE/szamatch/Lup_scope_{}_{:d}_{:d}'.format(feffef,cab,lai)
+    Fname = '../cwavelets/libradtranscope/floxseries_ae_oen/reflectance/Fcomp_{}_{:d}_{:d}_ae.dat'.format(feffef,cab,lai) #'fluorescence/F_scope_{}_{:d}_{:d}'.format(feffef,cab,lai)
     
-    wlRname = 'reflectance/szamatch/wlR'
-    wlFname = 'reflectance/szamatch/wlF'
+    wlRname = '../reflectance/szamatch/wlR'
+    wlFname = '../reflectance/szamatch/wlF'
     filenames = [completename,woFname,reflname,albedoname,Fname,wlRname,wlFname,scoperef]
     array_list = []
     for name in filenames:
@@ -122,6 +122,81 @@ def residual(Fguess,level,scales):
         
         return (np.sum((np.square(diff))/scales[level]))
 
+
+def bspleval(x, knots, coeffs, order, debug=False):
+    '''
+    Evaluate a B-spline at a set of points.
+
+    Parameters
+    ----------
+    x : list or ndarray
+        The set of points at which to evaluate the spline.
+    knots : list or ndarray
+        The set of knots used to define the spline.
+    coeffs : list of ndarray
+        The set of spline coefficients.
+    order : int
+        The order of the spline.
+
+    Returns
+    -------
+    y : ndarray
+        The value of the spline at each point in x.
+    '''
+
+    k = order
+    t = knots
+    m = np.alen(t)
+    npts = np.alen(x)
+    B = np.zeros((m-1,k+1,npts))
+
+    if debug:
+        print('k=%i, m=%i, npts=%i' % (k, m, npts))
+        print('t=', t)
+        print('coeffs=', coeffs)
+
+    ## Create the zero-order B-spline basis functions.
+    for i in range(m-1):
+        B[i,0,:] = np.float64(np.logical_and(x >= t[i], x < t[i+1]))
+
+    if (k == 0):
+        B[m-2,0,-1] = 1.0
+
+    ## Next iteratively define the higher-order basis functions, working from lower order to higher.
+    for j in range(1,k+1):
+        for i in range(m-j-1):
+            if (t[i+j] - t[i] == 0.0):
+                first_term = 0.0
+            else:
+                first_term = ((x - t[i]) / (t[i+j] - t[i])) * B[i,j-1,:]
+
+            if (t[i+j+1] - t[i+1] == 0.0):
+                second_term = 0.0
+            else:
+                second_term = ((t[i+j+1] - x) / (t[i+j+1] - t[i+1])) * B[i+1,j-1,:]
+
+            B[i,j,:] = first_term + second_term
+        B[m-j-2,j,-1] = 1.0
+
+    if debug:
+        plt.figure()
+        for i in range(m-1):
+            plt.plot(x, B[i,k,:])
+        plt.title('B-spline basis functions')
+
+    ## Evaluate the spline by multiplying the coefficients with the highest-order basis functions.
+    y = np.zeros(npts)
+    for i in range(m-k-1):
+        y += coeffs[i] * B[i,k,:]
+
+    if debug:
+        plt.figure()
+        plt.plot(x, y)
+        plt.title('spline curve')
+        plt.show()
+
+    return(y)
+
 """ Rshape = 'poly'
 if Rshape == 'tanh':
     fitfunc = refl_tanh
@@ -138,13 +213,13 @@ elif Rshape == 'poly':
 
 
 wl = []
-with open('cwavelets/libradtranscope/floxseries_ae_oen/radcomplete_004_5_7_ae_conv.dat','r') as g:
+with open('../cwavelets/libradtranscope/floxseries_ae_oen/radcomplete_004_5_7_ae_conv.dat','r') as g:
     for line in g:
         line = line.split()
         wl.append(float(line[0]))
     wl = np.array(wl)
 
-refname = 'cwavelets/libradtranscope/floxseries_ae_oen/whiteref_ae_conv.dat'
+refname = '../cwavelets/libradtranscope/floxseries_ae_oen/whiteref_ae_conv.dat'
 whitereference = []
 with open(refname,'r') as wf:
     for k,line in enumerate(wf):
@@ -218,8 +293,21 @@ for sifeffec in sifeffecs:
             R_final = fitfunc(wlnew,*R_fitparams)  """
 
 
-            interRa, smoothing = adjust_smoothing(wlnew,R,initsmooth,30,31,3)
+            interRa, smoothing = adjust_smoothing(wlnew,R,initsmooth,10,11,2)
+            plt.figure()
+            plt.plot(wlnew,interRa(wlnew),label='Original Spline')
             #R_final = refl_piecewise(wlnew,interRa.get_knots(),interR(interRa.get_knots()),3)
+            print(interRa._data[9])
+            print(len(interRa._eval_args))
+            print(len(interRa.get_knots()))
+            splinecoeffs = interRa._data[9]
+            knots = interRa._data[8]
+            change = (np.random.rand(len(splinecoeffs))-0.5)/10
+            splinecoeffs += change
+            Rnew = bspleval(wlnew, knots, splinecoeffs, 2, debug=False)
+            plt.plot(wlnew,Rnew,label='Changed Coefficients')
+            plt.legend()
+            plt.show()
             R_final = interRa(wlnew)
             shiftedknots = interR(interRa.get_knots())
             shiftedknots[-2] -= 0.03
