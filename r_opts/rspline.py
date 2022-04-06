@@ -99,8 +99,8 @@ def create_decomp_p(data,scales,level):
     
     j = scales[level]
         
-    #coef,freqs = pywt.cwt(data,j,'gaus2',method='fft')
-    coef,ssqscales = cwt(data,wavelet='cmhat',scales=j)
+    coef,freqs = pywt.cwt(data,j,'gaus2',method='fft')
+    #coef,ssqscales = cwt(data,wavelet='cmhat',scales=j)
     
     return coef
 
@@ -149,8 +149,11 @@ def optimize_coeffs(wl,ref, signal, knots, initial_guess,scales,order,lbl=0):
     # initiate B-matrix:
     B = setup_B(wl,knots,order)
 
-    
-    parameterBounds = optimize.Bounds(np.array(nz_initial-5*order/np.mean(ref)),nz_initial-0.2*order/np.mean(ref))
+    lowerBound = np.zeros(len(nz_initial))
+    lowerBound[:-1] = 0.8*nz_initial[:-1]
+    lowerBound[-1] = 0.99*nz_initial[-1]
+
+    parameterBounds = optimize.Bounds(lowerBound,0.99*nz_initial)
     results = []
     if lbl == 1:
 
