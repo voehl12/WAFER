@@ -108,3 +108,30 @@ def flox():
     int_num = len(upseries)
 
     return wlfluo, upseries,downseries
+
+
+def add_noise(data,snr,switch):
+    sigmas = []
+    if switch == 0:
+        sigmas = np.zeros(len(data))
+        return sigmas,data
+    else:
+        noisydata = np.zeros((10,len(data)))
+        for j in range(10):
+
+            s0 = 0
+            newdata = np.zeros(len(data))
+            #SNR = []
+            for i,val in enumerate(data):
+                sigma = val/snr
+                #sigma = 0.3
+                #sigma = 1.0
+                #snr = val/sigma
+                s0 = np.random.normal(0.0, sigma)
+                #SNR.append(snr)
+                sigmas.append(s0)
+                newval = val + s0
+                newdata[i] = newval
+            noisydata[j] = newdata
+        newdata = np.mean(noisydata,axis=0)
+        return sigmas,newdata
