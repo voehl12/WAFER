@@ -55,17 +55,20 @@ def optimize_coeffs(wl,ref, signal, initial_guess,scales,lbl=0):
     
     lowerBound = np.full((len(nz_initial)),-np.inf)
     upperBound = np.full((len(nz_initial)),np.inf)
+
+    # these bounds depend on whether the last coefficient of the polynomial has been pushed down as initial guess or not! if yes (p_init[-1] = p_init[-1] - 0.3), the first set is correct.
+    #upperBound[-1] = nz_initial[-1]+ 0.2999
+    #lowerBound[-1] = nz_initial[-1]
+    upperBound[-1] = nz_initial[-1]-0.0000001
+    lowerBound[-1] = nz_initial[-1]-0.2
     
-    upperBound[-1] = nz_initial[-1]+ 0.2999
-    lowerBound[-1] = nz_initial[-1]
-    upperBound[-2] = nz_initial[-2]+0.0001
+ 
+    """upperBound[-2] = nz_initial[-2]+0.0001
     lowerBound[-2] = nz_initial[-2]-0.0001
     if len(nz_initial) > 2:
 
         upperBound[-3] = nz_initial[-3]+0.0001
-        lowerBound[-3] = nz_initial[-3]-0.0001
- 
-
+        lowerBound[-3] = nz_initial[-3]-0.0001"""
     parameterBounds = optimize.Bounds(lowerBound,upperBound)
     masks = []
     for i in range(len(scales)):
