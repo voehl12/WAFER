@@ -1,8 +1,7 @@
 import numpy as np 
-import pywt
-from ssqueezepy import cwt
 from scipy import optimize
 from scipy import interpolate
+from utils import wavelets
 
 
 def setup_B(x,knots,order):
@@ -90,19 +89,7 @@ def bspleval(coeffs,B):
 
     return y
 
-def create_decomp_p(data,scales,level):
-   
-            
-    data = np.array(data)
 
-    
-    
-    j = scales[level]
-        
-    coef,freqs = pywt.cwt(data,j,'gaus2',method='fft')
-    #coef,ssqscales = cwt(data,wavelet='cmhat',scales=j)
-    
-    return coef
 
 
 
@@ -126,7 +113,9 @@ def optimize_coeffs(wl,ref, signal, knots, initial_guess,scales,order,lbl=0):
     coeffs: ndarray
     """
 
-    def diff_func(coeffs,*args):
+    
+
+    def diff_func_spl(coeffs,*args):
 
         level = args[0]
         ncoeffs = np.zeros(len(B))
@@ -134,59 +123,147 @@ def optimize_coeffs(wl,ref, signal, knots, initial_guess,scales,order,lbl=0):
         refl = bspleval(ncoeffs,B) 
   
        
-        diff = create_decomp_p(np.multiply(ref,refl)-signal,scales,level)
-        res = np.sqrt(np.sum(np.square(diff)))
+        diff = wavelets.create_decomp_p(np.multiply(ref,refl),scales,level) - sigdecomp[level]
+        #subtracting noise for both reference and signal on all scales would not change anything for the optimization
+        
+        if isinstance(level,int):
+            diff = diff/scales[level]**0.5
+            diff = diff[0,masks[level].mask]
+            squaredsum = np.sum(np.square(diff))
+            #squaredsum = np.sum(np.square(diff)*np.sqrt(np.square(ref[masks[level].mask])+ np.square(signal[masks[level].mask])))
+            
+        else:
+            diff = [np.divide(diff[i],scales[i]**0.5)[masks[i].mask] for i in range(len(level))]
+            squaredsum = sum([ele for sub in np.square(diff)*np.sqrt(np.square(ref)+ np.square(signal)) for ele in sub])
+            
+    
+        res = np.sqrt(squaredsum)
 
 
         return res
+    N = len(wl)
+    # initiate B-matrix:
+
+
+    B = setup_B(wl,knots,order)
     nz_inds = np.nonzero(np.array(initial_guess))
     
     appref = np.divide(signal,ref)
     nz_initial = np.array(initial_guess)[nz_inds]
+    nz_initial_up = nz_initial
+    nz_initial_down = nz_initial-0.5
+    initial_spline = bspleval(initial_guess,B)
+    noisedecomp = wavelets.create_decomp_p(signal-np.multiply(ref,initial_spline),scales)
 
     coef_inds = [np.argmin(np.fabs(wl-knots[i])) for i in range(len(nz_initial))]
 
-    # initiate B-matrix:
-    B = setup_B(wl,knots,order)
-
+    sigdecomp = wavelets.create_decomp_p(signal,scales)
+    
+    
+    diff_func = diff_func_spl
     lowerBound = np.zeros(len(nz_initial))
-    lowerBound[:-1] = 0.8*nz_initial[:-1]
-    lowerBound[-1] = 0.99*nz_initial[-1]
+    lowerBound[0:2] = nz_initial[0:2]-0.00002
+    lowerBound[3:-1] = nz_initial[3:-1]-0.3
+    lowerBound[-1] = nz_initial[-1]-0.00002
 
-    parameterBounds = optimize.Bounds(lowerBound,0.99*nz_initial)
+    parameterBounds = optimize.Bounds(lowerBound,nz_initial_up)
+    
+    
+    
+    masks = []
+    for i in range(len(scales)):
+        negmask = np.ma.masked_where(sigdecomp[i] <= 0, sigdecomp[i])
+        #print(-np.median(np.fabs(sigdecomp[i,negmask.mask]))/0.6745)
+        levelmask = np.ma.masked_where(sigdecomp[i] <= -np.median(np.fabs(sigdecomp[i,negmask.mask]))/0.6745, sigdecomp[i])
+        #print(len(sigdecomp[i,levelmask.mask]))
+        masks.append(np.ma.masked_where(sigdecomp[i] <= -np.median(np.fabs(sigdecomp[i,negmask.mask]))/0.6745, sigdecomp[i]))
+    
+    # thresholding: wavelet tour, page 565
+    
+
+    
+  
     results = []
     if lbl == 1:
 
         for i in range(len(scales)):
             kwargs = (i)
 
-            result_nm = optimize.minimize(diff_func,nz_initial, bounds=parameterBounds, args=kwargs)
-
+            result_nm = optimize.minimize(diff_func,nz_initial_down, bounds=parameterBounds, args=kwargs)
+            #print(result_nm.x)
             results.append(result_nm.x)
     else: 
         kwargs = range(len(scales))
         result_nm = optimize.minimize(diff_func,nz_initial, bounds=parameterBounds, args=kwargs)
         results = result_nm.x
 
-    return results
+    return np.array(results)
+
+def determine_weights(wl,knots,signal,scales):
+    nz_knots = knots[np.nonzero(knots)]
+   
+    coef_inds = [np.argmin(np.fabs(wl-knots[i])) for i in range(len(nz_knots))]
+
+    sigdecomp = wavelets.create_decomp_p(signal,scales)
+    
+
+    
+    
+    
+    masks = []
+    for i in range(len(scales)):
+        negmask = np.ma.masked_where(sigdecomp[i] <= 0, sigdecomp[i])
+        #print(-np.median(np.fabs(sigdecomp[i,negmask.mask])))
+        levelmask = np.ma.masked_where(sigdecomp[i] <= -np.median(np.fabs(sigdecomp[i,negmask.mask]))/0.6745, sigdecomp[i])
+        #print(len(sigdecomp[i,levelmask.mask]))
+        masks.append(np.ma.masked_where(sigdecomp[i] <= -np.median(np.fabs(sigdecomp[i,negmask.mask]))/0.6745, sigdecomp[i]))
+    
+    # thresholding: wavelet tour, page 565
+    contrib_counts = np.ones((len(scales),len(nz_knots)))
+    for i,val in enumerate(coef_inds):
+        if i == 0:
+            rangemin = 0
+            rangemax = val + (coef_inds[i+1] - val)//2
+        elif i == len(coef_inds)-1:
+            rangemin = val - (val-coef_inds[i-1])//2
+            rangemax = val
+        else:
+            rangemin = val - (val-coef_inds[i-1])//2
+            rangemax = val + (coef_inds[i+1] - val)//2
+        
+        for j,scale in enumerate(scales):
+            scalecounts = 0
+            for k in masks[j][rangemin:rangemax].mask:
+                if k == True:
+                    scalecounts += 1
+            #print(scalecounts)
+          
+            contrib_counts[j,i] += scalecounts
+    
+    return contrib_counts
 
 
-def adjust_smoothing(wl,refl,initsmoothing,minknots,maxknots,order):
+
+
+def adjust_smoothing(wl,refl,initsmoothing,numknots,order):
     smoothing = initsmoothing
     interRa = interpolate.UnivariateSpline(wl,refl,s=smoothing,k=order)
     initknots = interRa.get_knots()
+
+    while len(interRa.get_knots()) != numknots:
+        if len(interRa.get_knots()) < numknots:
+            #step = smoothing / 10
+            while len(interRa.get_knots()) < numknots:
+                
+                smoothing *= 0.999
+                interRa = interpolate.UnivariateSpline(wl,refl,s=smoothing,k=order)
     
-    if len(initknots) < minknots:
-        while len(interRa.get_knots()) < minknots:
-            step = smoothing / 10
-            smoothing -= step
-            interRa = interpolate.UnivariateSpline(wl,refl,s=smoothing,k=order)
-    
-    elif len(initknots) > maxknots:
-        while len(interRa.get_knots()) > maxknots:
-            step = smoothing / 10
-            smoothing += step
-            interRa = interpolate.UnivariateSpline(wl,refl,s=smoothing,k=order)
+        elif len(interRa.get_knots()) > numknots:
+            #step = smoothing / 10
+            while len(interRa.get_knots()) > numknots:
+                
+                smoothing *= 1.001
+                interRa = interpolate.UnivariateSpline(wl,refl,s=smoothing,k=order)
 
     #print('Final Smoothing: {:.7f}'.format(smoothing))
     return interRa,smoothing
