@@ -129,7 +129,7 @@ def FLOX_SpecFit_6C(wvl, L0, LS, fsPeak, w, oWVL, alg = 'lm'):
     # -- Reflectance 
     knotvals   = x[2:]
     interp = interpolate.UnivariateSpline(knots,knotvals,s=0)
-    RHO          = interp(wvl)
+    RHO          = interp(oWVL)
     r_wvl        = RHO
 
 
@@ -160,4 +160,4 @@ def FLOX_SpecFit_6C(wvl, L0, LS, fsPeak, w, oWVL, alg = 'lm'):
 
 
 
-    return x, f_wvl, r_wvl, resnorm, exitflag, nfevas
+    return x, f_wvl, r_wvl, resnorm, exitflag, nfevas, residual
