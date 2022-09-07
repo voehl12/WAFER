@@ -39,28 +39,38 @@ def evaluate_sif(wl,spec,specialwl):
         spec_val = np.nan
 
     if flags[2] == 1:
+        if argmins[2]-20 < 0 or argmins[2]+20 > len(wl):
+            Fr = spec[argmins[2]]
+            wlFr = rel_wls[2]
+        else:
+
+            Fr_ind = np.argmax(spec[argmins[2]-20:argmins[2]+20])
+            Fr_ind = Fr_ind + argmins[2]-20
+            
+            Fr = spec[Fr_ind]
+            wlFr = wl[Fr_ind]
+            if Fr_ind == argmins[2]-20 or Fr_ind == argmins[2]+20:
+                print('Did not find red peak!')
+                Fr = spec[argmins[2]]
         
-        Fr_ind = np.argmax(spec[argmins[2]-20:argmins[2]+20])
-        Fr_ind = Fr_ind + argmins[2]-20
-        
-        Fr = spec[Fr_ind]
-        wlFr = wl[Fr_ind]
-        if Fr_ind == argmins[2]-20 or Fr_ind == argmins[2]+20:
-            print('Did not find red peak!')
-            Fr = np.nan
-       
     else:
         Fr = np.nan
         wlFr = np.nan
 
     if flags[3] == 1:
-        Ffr_ind = np.argmax(spec[argmins[3]-50:argmins[3]+60])
-        Ffr_ind = Ffr_ind + argmins[3]-50
-        Ffr = spec[Ffr_ind]
-        wlFfr = wl[Ffr_ind]
-        if Ffr_ind == argmins[3]-50 or Ffr_ind == argmins[3]+60:
-            print('Did not find far red peak!')
-            Ffr = np.nan
+        if argmins[3]-20 < 0 or argmins[3]+20 > len(wl):
+            Ffr = spec[argmins[3]]
+            wlFfr = rel_wls[3]
+        else:
+
+            Ffr_ind = np.argmax(spec[argmins[3]-20:argmins[3]+20])
+            Ffr_ind = Ffr_ind + argmins[3]-20
+            
+            Ffr = spec[Ffr_ind]
+            wlFfr = wl[Ffr_ind]
+            if Ffr_ind == argmins[3]-20 or Ffr_ind == argmins[3]+20:
+                print('Did not find far red peak!')
+                Ffr = spec[argmins[3]]
     else:
         Ffr = np.nan
         wlFfr = np.nan
@@ -83,6 +93,9 @@ def calc_rsquared(y,y_m):
     sstot = np.sum(np.square(y-np.mean(y)))
     ssres = np.sum(np.square(y-y_m))
     return 1 - ssres / sstot
+
+def calc_rmse(y,y_m):
+    return np.sqrt(np.mean(np.square(y-y_m)))
 
 def fitfct_linear(x,a,b):
     return a*x + b
