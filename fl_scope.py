@@ -29,6 +29,7 @@ n = [0,1]
 polyorder = 2
 mineval,maxeval,eval_wl = 745,755,750
 mineval,maxeval,eval_wl = 754,773,760
+mineval,maxeval,eval_wl = 745,755,750
 
 cm = plotting.get_colormap(len(CAB)*len(LAI))
 
