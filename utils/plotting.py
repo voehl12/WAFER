@@ -11,7 +11,7 @@ plt.rcParams.update({
 
 
 def plot_powerspectrum(wl,spectrum,scales,wlscales,filename):
-    figF,axF = plt.subplots(figsize=(8,6))
+    figF,axF = plt.subplots() #figsize=(8,6)
     normalizedsensorspec = [spectrum[i]/scales[i]**0.5 for i in range(len(spectrum))]
     normalizedsensorspec = np.array(normalizedsensorspec)
     plotspec = normalizedsensorspec
