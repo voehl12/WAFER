@@ -73,33 +73,86 @@ def synthetic(cab,lai,feffef,wlmin=0,wlmax=1000,completedir='../cwavelets/librad
     return wl, signal, whitereference, refl, F,noF
 
 
-def hyplant():
-    completename = '../cwavelets/Hyplant/spectrum_SIF_high.dat'
+def hyplant(pixelg,pixelw,wlmin=0,wlmax=1000,path='../../Data/20200625-OEN-1132-1800-L1-S-FLUO_radiance_deconv_i1.dat'):
+
+    def get_wavelengths():
+        wlpath = '../../Data/20200625-OEN-1132-1800-L1-S-FLUO_radiance_deconv_i1.hdr'
+        wl = []
+        with open(wlpath, 'r') as w:
+            for line in w:
+                linep = line.split()
+                if linep[0] == 'samples':
+                    width = int(linep[2])
+                    print(width)
+                elif linep[0] == 'lines':
+                    length = int(linep[2])
+                    print(length)
+                elif linep[0] == 'bands':
+                    bands = int(linep[2])
+                    print(bands)
+                elif len(wl) < 1024:
+                    line = line.split(',')
+                    try: 
+                        sw0 = float(line[0].strip())
+                        for val in line:
+
+                            wl.append(float(val.strip()))
+                    except:
+                        continue
+                else:
+                    break
+             
+        return wl,width,length,bands
     
+    def call_data(path):
+        return np.fromfile(path, dtype=np.uint16)
     
-    filenames = [completename]
-    array_list = []
-    for name in filenames:
-        arr = []
-        with open(name,'r') as f:
-            for line in f:
-                line = line.split()
-                if len(line) > 1:
-                    arr.append(float(line[1]))
-                else: 
-                    arr.append(float(line[0]))
-        arr = np.array(arr)
-        array_list.append(arr)
-    wl = get_wavelengths('../../Data/hyplant2020_wl.csv')
+    #bands = 1024
+    #width = 384
+    #length = 4065
+    
+
+    def find_spectrum(pixel,data,bands,width):
+        spectrum = []
+        line = np.floor(pixel / width) 
+        column = pixel % width
+        start_id = int(line * width * bands + column)
+        end_id = int(start_id + (bands-1) * width)
+        #print((end_id-start_id)/bands)
+        ids = np.linspace(start_id,end_id,bands,dtype=int)
+        #print(ids)
+        for num in ids:
+            spectrum.append(data[num])
+        return np.array(spectrum)
+
+    data = call_data(path)
+    wl,width,length,bands = get_wavelengths()
     wl = np.array(wl)
-    refname = '../cwavelets/Hyplant/compare_reference.dat'
-    whitereference = []
-    with open(refname,'r') as wf:
-        for k,line in enumerate(wf):
-            line = line.split()
-            whitereference.append(float(line[0]))
-    whitereference = np.array(whitereference)
-    return wl, array_list, whitereference
+    print(wl)
+    pixels = width*length
+    startind = np.argmin(np.fabs(wl-wlmin))
+    endind = np.argmin(np.fabs(wl-wlmax))
+    shift = [-2,-1,0,1,2]
+    upwelling_samples = np.array([find_spectrum(pixelg+shift[i],data,bands,width) for i in range(len(shift))])
+    upwelling = np.mean(upwelling_samples,axis=0)
+    reference_samples = np.array([find_spectrum(pixelw+shift[i],data,bands,width) for i in range(len(shift))])
+    reference = np.mean(reference_samples,axis=0)
+    """ for i in range(samples):
+        spectrum = np.zeros(bands)
+        while sum(spectrum) < 100.0:
+            pix = int(np.random.random_sample() * pixels)
+            spectrum = find_spectrum(pix,data,bands,width)
+        
+        plt.plot(wl,spectrum,label='pixel %d' % pix)
+        #plt.xlim(649,814) """
+    
+    plt.figure()
+    plt.plot(wl,upwelling)
+    plt.plot(wl,reference)
+    plt.show()
+
+        
+    return wl[startind:endind], upwelling[startind:endind]/100, reference[startind:endind]/100
 
 
 def flox_single(i,wlmin=0,wlmax=1000):
