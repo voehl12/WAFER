@@ -21,13 +21,13 @@ fe = '002'
 testjmin = -2.5
 testjmax = 3
 testnlevels = 2048
-
+noise = 0
 
 wl, upsignal, whitereference, refl, F,noF = prepare_input.synthetic(cab,lai,fe,wlmin=mineval,wlmax=maxeval,completedir='../cwavelets/libradtranscope/floxseries_ae_oen/brdf/')
 
 refnoise, whitereference = prepare_input.add_noise(whitereference,1000,noise)
 sensornoise, upsignal = prepare_input.add_noise(upsignal,1000,noise)
-
+appref = np.divide(upsignal,whitereference)
 nopeak_wl, nopeak_appref = prepare_input.rm_peak(wl,appref) 
 
 p_init = np.polyfit(nopeak_wl,nopeak_appref,polyorder)
@@ -61,3 +61,6 @@ R_std = funcs.weighted_std(polyrefls,weights=weights,axis=0)
 F_der = upsignal-polyR*whitereference
 F_err = np.sqrt(np.square(sensornoise) + np.square(np.multiply(whitereference,R_std)) + np.square(np.multiply(polyR,refnoise)))
                 
+plt.figure()
+plt.plot(wl,F_der)
+plt.show()
