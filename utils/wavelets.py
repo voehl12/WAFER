@@ -9,6 +9,8 @@ class decomp:
         self.jmax = jmax
         self.nlevel = nlevel
         self.scales = np.logspace(jmin,jmax,num=nlevel,base=2)
+        self.optlevel = int
+
 
     def calc_scales(self):
         self.scales =  np.logspace(self.jmin,self.jmax,num=self.nlevel,base=2)
@@ -17,7 +19,6 @@ class decomp:
 
         weights = determine_weights(testsignal,self.scales)
         
-        print(weights)
         weightthres = np.max(weights)*0.9
         newscaleinds = []
         for i in range(len(weights)):
@@ -41,6 +42,18 @@ class decomp:
     def create_comps(self,testsignal):
         comps = create_decomp_p(testsignal,self.scales)
         self.comps = comps
+
+    def calc_mask(self,testsignal):
+        comps = create_decomp_p(testsignal,self.scales)
+        masks = []
+        for i in range(len(self.scales)):
+            negmask = np.ma.masked_where(comps[i] <= 0, comps[i])
+            masks.append(np.ma.masked_where(comps[i] <= -np.median(np.fabs(comps[i,negmask.mask]))/0.6745, comps[i]))
+        self.masks = masks
+        # thresholding: wavelet tour, page 565
+
+
+
 
 
 
