@@ -232,15 +232,15 @@ def push_down(wl,specdecomp,refdecomp,initknots,levels,apparentrefl,whitereferen
     return wl_points,knots
 
 def prepare_arrays(cab,lai,feffef):
-    completename = 'cwavelets/libradtranscope/floxseries_ae_oen/reflectance/radcomplete_{}_{:d}_{:d}_ae_conv.dat'.format(feffef,cab,lai)
-    woFname = 'cwavelets/libradtranscope/floxseries_ae_oen/reflectance/radwoF_{}_{:d}_{:d}_ae_conv.dat'.format(feffef,cab,lai)
-    reflname = 'reflectance/szamatch/rho_scope_{}_{:d}_{:d}'.format(feffef,cab,lai)
-    albedoname = 'reflectance/szamatch/albedo_scope_{}_{:d}_{:d}'.format(feffef,cab,lai)
-    scoperef = 'LupSCOPE/szamatch/Lup_scope_{}_{:d}_{:d}'.format(feffef,cab,lai)
-    Fname = 'cwavelets/libradtranscope/floxseries_ae_oen/reflectance/Fcomp_{}_{:d}_{:d}_ae.dat'.format(feffef,cab,lai) #'fluorescence/F_scope_{}_{:d}_{:d}'.format(feffef,cab,lai)
+    completename = '../cwavelets/libradtranscope/floxseries_ae_oen/reflectance/radcomplete_{}_{:d}_{:d}_ae_conv.dat'.format(feffef,cab,lai)
+    woFname = '../cwavelets/libradtranscope/floxseries_ae_oen/reflectance/radwoF_{}_{:d}_{:d}_ae_conv.dat'.format(feffef,cab,lai)
+    reflname = '../reflectance/szamatch/rho_scope_{}_{:d}_{:d}'.format(feffef,cab,lai)
+    albedoname = '../reflectance/szamatch/albedo_scope_{}_{:d}_{:d}'.format(feffef,cab,lai)
+    scoperef = '../LupSCOPE/szamatch/Lup_scope_{}_{:d}_{:d}'.format(feffef,cab,lai)
+    Fname = '../cwavelets/libradtranscope/floxseries_ae_oen/reflectance/Fcomp_{}_{:d}_{:d}_ae.dat'.format(feffef,cab,lai) #'fluorescence/F_scope_{}_{:d}_{:d}'.format(feffef,cab,lai)
     
-    wlRname = 'reflectance/szamatch/wlR'
-    wlFname = 'reflectance/szamatch/wlF'
+    wlRname = '../reflectance/szamatch/wlR'
+    wlFname = '../reflectance/szamatch/wlF'
     filenames = [completename,woFname,reflname,albedoname,Fname,wlRname,wlFname,scoperef]
     array_list = []
     for name in filenames:
@@ -257,7 +257,7 @@ def prepare_arrays(cab,lai,feffef):
     return array_list
 
 def prepare_arrays_hp():
-    completename = 'cwavelets/Hyplant/spectrum_SIF_high.dat'
+    completename = '../cwavelets/Hyplant/spectrum_SIF_high.dat'
     
     
     filenames = [completename]
@@ -291,7 +291,7 @@ def spec_respons(wl,rawdata,wlmin,wlmax,Nsamples,fwhm):
     
     return samples,convsignal,gauss
 
-def match_solspec(wl,fwhm,path='../Data/Sun/SUN001kurucz.dat'):
+def match_solspec(wl,fwhm,path='../../Data/Sun/SUN001kurucz.dat'):
     swl = []
     srad = []
     with open(path,'r') as f:
@@ -598,10 +598,10 @@ def optimize_knots(wl,comm_knots,decomp_inp,refdecomp,whiteref,appref,retlevels,
         cinit = binit/(appref[0]-ainit*wl[0]) - 1
         p_init = [ainit,binit,cinit,0.0001]
         testfitparams,_ = optimize.curve_fit(refl_logistic,wl_points,points,p0=p_init) """
-        #interp = interpolate.UnivariateSpline(wl_points,points,s=0)
-        interppoints = np.append(points,apparentrefl[-1])
-        interppoints = np.insert(interppoints,0,apparentrefl[0])
-        interp = interp1d(wl_points,interppoints,kind='linear')
+        interp = interpolate.UnivariateSpline(wl_points,points,s=0)
+        #interppoints = np.append(points,apparentrefl[-1])
+        #interppoints = np.insert(interppoints,0,apparentrefl[0])
+        #interp = interp1d(wl_points,interppoints,kind='linear')
         #interp = interpolate.Akima1DInterpolator(wl_points,points)
         #pointins = np.array([np.argmin(np.fabs(wl-wl_points[i])) for i in range(len(points))])
         #polyfitcoeffs = np.polyfit(wl_points,points,5)
@@ -980,7 +980,7 @@ def fsolve_solver(sig,ref,init,scale):
 
 
 newdir = str(datetime.now().date())
-os.system('mkdir {}'.format(newdir))
+os.system('mkdir ../{}'.format(newdir))
 
 
 resultfilename = newdir+'/flox_proposal_oensmodel_quadrmean_1015_nonoise'
@@ -1009,7 +1009,7 @@ if testdata == 'scope':
         print('Cab','LAI',sep='  ',file=Fres)
 
     wl = []
-    with open('cwavelets/libradtranscope/floxseries_ae/radcomplete_004_5_7_ae_conv.dat','r') as g:
+    with open('../cwavelets/libradtranscope/floxseries_ae/radcomplete_004_5_7_ae_conv.dat','r') as g:
         for line in g:
             line = line.split()
             wl.append(float(line[0]))
@@ -1023,7 +1023,7 @@ elif testdata == 'flox' or testdata == 'hyplant':
         timestampbegin = day+' 05:00:00'
         timestampend = day+' 17:00:00'
         #datapath = "../FloX_Davos/SDcard/FloX_JB038AD_S20210603_E20211119_C20211208.nc"
-        datapath = "../FloX_Davos/FloX_JB023HT_S20210326_E20210610_C20210615.nc"
+        datapath = "../../FloX_Davos/FloX_JB023HT_S20210326_E20210610_C20210615.nc"
         fluodata = xr.open_dataset(datapath, group="FLUO")
         metadata = xr.open_dataset(datapath,group='METADATA')
         wlfluo = np.array(fluodata["wavelengths"])
@@ -1039,9 +1039,9 @@ elif testdata == 'flox' or testdata == 'hyplant':
 
     if testdata == 'hyplant':
         fileext = 'hyplant'
-        wl = get_wavelengths('../Data/hyplant2020_wl.csv')
+        wl = get_wavelengths('../../Data/hyplant2020_wl.csv')
         wl = np.array(wl)
-        refname = 'cwavelets/Hyplant/compare_reference.dat'
+        refname = '../cwavelets/Hyplant/compare_reference.dat'
         whitereference = []
         with open(refname,'r') as wf:
             for k,line in enumerate(wf):
@@ -1058,7 +1058,7 @@ elif testdata == 'flox' or testdata == 'hyplant':
 
 
 comm_knots = [] 
-with open('common_reflectance_knots','r') as ck:
+with open('../common_reflectance_knots','r') as ck:
     for val in ck:
         if float(val) < 720 or float(val) > 743:
             if float(val) < 670 or float(val) > 682:
@@ -1084,19 +1084,19 @@ for cab in CAB:
             fileext = testdata+'_oensquadrres1015_'+str(cab)+'_'+str(lai)
             wl = []
             noconvwl = []
-            with open('cwavelets/libradtranscope/series/wl_array','r') as ncw:
+            with open('../cwavelets/libradtranscope/series/wl_array','r') as ncw:
                 for line in ncw:
                     line = line.split()
                     noconvwl.append(float(line[0]))
             noconvwl = np.array(noconvwl)
-            with open('cwavelets/libradtranscope/floxseries_ae_oen/radcomplete_004_5_7_ae_conv.dat','r') as g:
+            with open('../cwavelets/libradtranscope/floxseries_ae_oen/radcomplete_004_5_7_ae_conv.dat','r') as g:
                         for line in g:
                             line = line.split()
                             wl.append(float(line[0]))
             wl = np.array(wl)
             # select simulation: first number - Ch content, second number - LAI
             arrays = prepare_arrays(cab,lai,sifeffec)
-            refname = 'cwavelets/libradtranscope/floxseries_ae_oen/whiteref_ae_conv.dat'
+            refname = '../cwavelets/libradtranscope/floxseries_ae_oen/whiteref_ae_conv.dat'
             whitereference = []
             with open(refname,'r') as wf:
                 for k,line in enumerate(wf):
