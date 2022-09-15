@@ -4,7 +4,7 @@ from r_opts import rspline,rtanh,rpoly
 from ih import prepare_input
 import matplotlib.pyplot as plt
 import scipy
-from utils import wavelets,plotting, funcs
+from utils import wavelets,plotting,funcs
 from SFM import SFM,SFM_BSpline
 from scipy import optimize
 from datetime import datetime
