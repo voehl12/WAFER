@@ -22,21 +22,24 @@ cab = 20
 lai = 3
 fe = '002'
 
-testjmin = -2.5
-testjmax = 3
-testnlevels = 2048
+jmin = -2.5
+jmax = 3
+nlevels = 2048
 noise = 0
 polyorder = 2
 
 ########################################################################
 
+############### data preparation #######################################
 
 wl, upsignal, whitereference, refl, F,noF = prepare_input.synthetic(cab,lai,fe,wlmin=mineval,wlmax=maxeval,completedir=directory)
 
 refnoise, whitereference = prepare_input.add_noise(whitereference,1000,noise)
 sensornoise, upsignal = prepare_input.add_noise(upsignal,1000,noise)
 
-############### initial guess and reflectance optimization##############
+########################################################################
+
+############### initial guess and reflectance optimization #############
 
 start = datetime.now()
 appref = np.divide(upsignal,whitereference)
@@ -47,7 +50,7 @@ p_init = np.polyfit(nopeak_wl,nopeak_appref,polyorder)
 interp = np.poly1d(p_init)
 poly_R_init = interp(wl)
 
-newdecomp = wavelets.decomp(testjmin,testjmax,testnlevels)
+newdecomp = wavelets.decomp(jmin,jmax,nlevels)
 newdecomp.adjust_levels(upsignal)
 newdecomp.create_comps(upsignal)
 
