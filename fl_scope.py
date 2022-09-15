@@ -75,9 +75,9 @@ for noise in n:
                 nopeak_wl, nopeak_appref = prepare_input.rm_peak(wl,appref) 
     
                 p_init = np.polyfit(nopeak_wl,nopeak_appref,polyorder)
-                #p_init = np.polyfit(wl,appref,polyorder)
+              
             
-                p_init[-1] = p_init[-1] #- 0.3
+                #p_init[-1] = p_init[-1] - 0.3
                 interp = np.poly1d(p_init)
                 poly_R_init = interp(wl)
                 
