@@ -5,7 +5,7 @@ from r_opts import rpoly
 from ih import prepare_input
 import matplotlib.pyplot as plt
 import scipy
-from utils import wavelets,plotting, funcs
+from utils import wavelets,plotting,funcs,results
 from SFM import SFM,SFM_BSpline
 from scipy import optimize
 import tikzplotlib
@@ -31,16 +31,10 @@ for range1 in ranges:
     times, wl, upseries, downseries, uperrors, downerrors, iflda_ref, iflda_errors, ifldb_ref, ifldb_errors = prepare_input.flox_allday(day,wlmin=windowmin,wlmax=windowmax)
     plottimes = times.dt.strftime('%H:%M').data
 
-    filename = 'timeseries_poly2_R_F_'+day+'_{:d}{:d}_looseboundary.txt'.format(windowmin,windowmax)
-    #filename = 'trash.txt'
-    with open(filename,'w') as f:
-        print('**Oensingen',file=f)
-        print('**range: {:d}-{:d} nm'.format(windowmin,windowmax),file=f)
-        print('**day: '+day,file=f)
-        print('time',file=f,end=',')
-        for w in wl:
-            print(float(w),file=f,end=',')
-        print(file=f)
+    ts_res = results.retrieval_res('Oensingen',day,windowmin,windowmax,eval_wl,'timeseries_poly2_R_F')
+    ts_res.initiate_ts_tofile()
+    ts_res.init_wl(wl)
+
         
     rangefig, rangeax = plt.subplots()
     rangeax.plot(wlorig,upseriesorig[10])
@@ -76,9 +70,7 @@ for range1 in ranges:
     sfm_residuals = []
     for t,time in enumerate(times):
         print(t,time.data)
-        with open(filename,'a') as f:
-            print('R',file=f,end=',')
-            print(plottimes[t],file=f,end=',')
+        
         uperror = uperrors[t]
         downerror = downerrors[t]
         meanerrors.append(np.mean(uperror))
@@ -101,18 +93,7 @@ for range1 in ranges:
             nopeak_appref = pinterp(wl)
             nopeak_wl = wl
     
-        """ orders = [1,2,3]
-        residuals = []
-        for order in orders:
-
-            p_init = np.polyfit(nopeak_wl,nopeak_appref,order)
-            interp = np.poly1d(p_init)
-            poly_R_init = interp(wl)
-            diff = np.fabs(nopeak_appref-poly_R_init)
-            residuals.append(sum(diff))
-
-        polyorder = orders[np.argmin(residuals)]
-        print(polyorder) """
+        
 
         p_init = np.polyfit(nopeak_wl,nopeak_appref,polyorder)
         interp = np.poly1d(p_init)
@@ -131,17 +112,18 @@ for range1 in ranges:
 
     
     
-        weights = wavelets.determine_weights(upsignal,newdecomp.scales)
+        newdecomp.calc_weights(upsignal)
+        weights = newdecomp.weights
 
         sfmmin = np.argmin(np.fabs(wlorig-670))
         sfmmax = np.argmin(np.fabs(wlorig-780))
         sfmWL = wlorig[sfmmin:sfmmax]
         x,Fsfm,Rsfm,resnorm, exitflag, nfevas,sfmres = SFM.FLOX_SpecFit_6C(sfmWL,whitereferenceorig[sfmmin:sfmmax],signalorig[sfmmin:sfmmax],[1,1],1.,wl,alg='trf')
-        
+        ts_res.Fsfm[0] = Fsfm
         sfm_residuals.append(sfmres)
         sunreference,_ = prepare_input.match_solspec(wl,0.3)
     
-        coeffs = rpoly.optimize_coeffs(wl,whitereference,upsignal,p_init,newdecomp.scales,lbl=1)
+        coeffs = rpoly.optimize_coeffs(wl,whitereference,upsignal,p_init,newdecomp)
         #coeffs = np.array(coeffs)
         polyrefls = []
         cmap = plotting.get_colormap(len(coeffs))
@@ -157,6 +139,7 @@ for range1 in ranges:
         
         polyrefls = np.array(polyrefls)
         polyR = np.average(polyrefls,weights=weights,axis=0)
+        ts_res.R = polyR
         R_err = funcs.weighted_std(polyrefls,weights=weights,axis=0)
 
         appR_err = appref*np.sqrt(np.square(np.divide(uperror,upsignal)) + np.square(np.divide(downerror,whitereference)))
@@ -174,20 +157,9 @@ for range1 in ranges:
 
 
         F_der = upsignal-polyR*whitereference
-        with open(filename,'a') as f:
-            for val in polyR:
-                print(val,file=f,end=',')
-            print(file=f)
-            print('F',file=f,end=',')
-            print(plottimes[t],file=f,end=',')
-            for val in F_der:
-                print(val,file=f,end=',')
-            print(file=f)
-            print('Fsfm',file=f,end=',')
-            print(plottimes[t],file=f,end=',')
-            for val in Fsfm:
-                print(val,file=f,end=',')
-            print(file=f)
+        ts_res.F[0] = F_der
+        ts_res.write_ts_tofile(plottimes[t])
+        
 
         F_err = np.sqrt(np.square(uperror) + np.square(np.multiply(whitereference,R_err)) + np.square(np.multiply(polyR,downerror)))
         if t % 23 == 0:
@@ -204,10 +176,11 @@ for range1 in ranges:
         F_param = np.polyfit(wl,F_der,2)
         Finterp = np.poly1d(F_param)
         F_smooth = Finterp(wl)
-        Ftotal,F687,F760,Fr,wlFr,Ffr,wlFfr,special = funcs.evaluate_sif(wl,F_der,eval_wl)
-        diurnal.append(special)
-        Ftotal,F687,F760,Fr,wlFr,Ffr,wlFfr,special = funcs.evaluate_sif(wl,Fsfm,eval_wl)
-        diurnalsfm.append(special)
+
+        ts_res.evaluate_sif(ts_res.F)
+        diurnal.append(ts_res.F[1][7])
+        ts_res.evaluate_sif(ts_res.Fsfm)
+        diurnalsfm.append(ts_res.Fsfm[1][7])
         
         
         Fws.append(F_der)
