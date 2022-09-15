@@ -6,6 +6,8 @@ import matplotlib.pyplot as plt
 from matplotlib import cm
 from ssqueezepy import ssq_cwt, ssq_stft,cwt,icwt,issq_cwt
 import pywt
+from ih import prepare_input
+from r_opts import rspline
 
 
 def prepare_arrays(cab,lai,feffef):
@@ -108,7 +110,8 @@ def create_decomp_p(data,scales,selscales='all'):
     
     j = scales
     
-  
+    if selscales == 'all':
+        selscales = np.arange(len(scales))
     
 
     coef,ssqscales = cwt(data,wavelet='cmhat',scales=j)
@@ -120,7 +123,7 @@ def residual(Fguess,level,scales):
                
         diff = create_decomp_p(Fguess,scales,level)
         
-        return (np.sum((np.square(diff))/scales[level]))
+        return (((np.square(diff))/scales[level]))
 
 
 def bspleval(x, knots, coeffs, order, debug=False):
@@ -186,7 +189,7 @@ def bspleval(x, knots, coeffs, order, debug=False):
 
     ## Evaluate the spline by multiplying the coefficients with the highest-order basis functions.
     y = np.zeros(npts)
-    for i in range(m-k-1):
+    for i in range(len(B)):
         y += coeffs[i] * B[i,k,:]
 
     if debug:
@@ -226,20 +229,25 @@ with open(refname,'r') as wf:
         line = line.split()
         whitereference.append(float(line[0]))
 whitereference = np.array(whitereference)
+whitereference = prepare_input.deconvolve(wl,whitereference)
+
+
 
 sifeffecs = ['002']
   
 CAB = [int(5),int(10)]
 for i in range(2,8):
     CAB.append(i*10) 
-#CAB = [int(10)]
+#CAB = [30,40]
 LAI = [1,2,3,4,5,6,7]
+#LAI = [2,4]
 my_cmap = cm.get_cmap('viridis', len(CAB)*len(LAI)*len(sifeffecs))
 l = 0
 fitfunc = refl_polynomial
 #p_init = [0.5,1,-730,0.2,1,1]
 fig,(ax1,ax2) = plt.subplots(2)
 resfig,resax = plt.subplots()
+coefffig,coeffax = plt.subplots()
 rrmses = []
 rmses = []
 F_meandiffs = []
@@ -250,6 +258,7 @@ for sifeffec in sifeffecs:
             print(cab,lai)
             arrays = prepare_arrays(cab,lai,sifeffec)
             atsensornonoise = arrays[0]
+            atsensornonoise = prepare_input.deconvolve(wl,atsensornonoise)
 
             reflectance = arrays[2]
             wlR = arrays[5]
@@ -257,8 +266,8 @@ for sifeffec in sifeffecs:
             R = interR(wl)
 
             apparentrefl = np.divide(atsensornonoise,whitereference)
-            startind = np.argmin(np.fabs(wl-675))
-            endind = np.argmin(np.fabs(wl-800))
+            startind = 1 #np.argmin(np.fabs(wl-675))
+            endind = len(wl)-1 #np.argmin(np.fabs(wl-800))
             R = R[startind:endind]
             apparentrefl = apparentrefl[startind:endind]
             atsensornonoise = atsensornonoise[startind:endind]
@@ -292,9 +301,14 @@ for sifeffec in sifeffecs:
             paramerrors = np.sqrt(np.diag(fitcov))
             R_final = fitfunc(wlnew,*R_fitparams)  """
 
+            interR, smoothing = rspline.adjust_smoothing(wlnew,R,0.001,15,16,2)
 
-            interRa, smoothing = adjust_smoothing(wlnew,R,initsmooth,10,11,2)
-            plt.figure()
+
+            splinecoeffs = interR._data[9]
+            knots = interR._data[8]
+            coeffax.plot(knots,splinecoeffs,color=my_cmap(l))
+            interRa, smoothing = adjust_smoothing(wlnew,R,initsmooth,15,16,2)
+            """ plt.figure()
             plt.plot(wlnew,interRa(wlnew),label='Original Spline')
             #R_final = refl_piecewise(wlnew,interRa.get_knots(),interR(interRa.get_knots()),3)
             print(interRa._data[9])
@@ -303,11 +317,11 @@ for sifeffec in sifeffecs:
             splinecoeffs = interRa._data[9]
             knots = interRa._data[8]
             change = (np.random.rand(len(splinecoeffs))-0.5)/10
-            splinecoeffs += change
-            Rnew = bspleval(wlnew, knots, splinecoeffs, 2, debug=False)
+            splinecoeffs += 0
+            Rnew = bspleval(wlnew, knots, splinecoeffs, 1, debug=True)
             plt.plot(wlnew,Rnew,label='Changed Coefficients')
-            plt.legend()
-            plt.show()
+            plt.legend() """
+            
             R_final = interRa(wlnew)
             shiftedknots = interR(interRa.get_knots())
             shiftedknots[-2] -= 0.03
@@ -329,13 +343,17 @@ for sifeffec in sifeffecs:
 
             ax2.plot(wlnew,Fdiff,color=my_cmap(l))
 
-            nlevel = 20
-            jmin = -0.5
+            nlevel = 80
+            jmin = -2.5
             #jmin = 0.5
             jmax = 8.0
             scales = np.logspace(jmin,jmax,num=nlevel,base=2)
             f = pywt.scale2frequency('gaus2', scales)
             wlscales = 1/f*0.17
+
+            refdecomp = create_decomp_p(whitereference,scales)
+            pos_mask = np.ma.masked_where(refdecomp <= 0, refdecomp)
+            
             decompres = []
             resminus = []
             resplus = []
@@ -343,7 +361,7 @@ for sifeffec in sifeffecs:
             for i in range(len(scales)):
                 res = residual(atsensornonoise-np.multiply(R_final,whiterefnew),i,scales)
                 resapp = residual(atsensornonoise-np.multiply(apparentrefl,whiterefnew),i,scales)
-                resup = residual(atsensornonoise-np.multiply(R_final+0.01,whiterefnew),i,scales)
+                resup = residual(atsensornonoise-np.multiply(R_final+0.02,whiterefnew),i,scales)
                 resdown = residual(atsensornonoise-np.multiply(R_final-0.01,whiterefnew),i,scales)
                 decompres.append(res)
                 resminus.append(resdown)
@@ -353,7 +371,12 @@ for sifeffec in sifeffecs:
                 
             #resax.plot(scales,decompres,color=my_cmap(l))
             decompres, resminus, resplus = np.array(decompres), np.array(resminus), np.array(resplus)
-            resax.plot(scales,resminus-decompres,':',color=my_cmap(l),label='CAB {:d}, LAI {:d}'.format(cab,lai))
+            """ heatfig, heatax = plt.subplots(figsize=(16,16))
+            hmap = heatax.pcolor(wlnew,scales,resminus-decompres,cmap='viridis',shading='auto',vmin=-0.1,vmax=0.1)
+            heatfig.colorbar(hmap, ax=heatax)
+            heatax.set_yscale('log',base=2) """
+            
+            #resax.plot(scales,decompres,':',color=my_cmap(l),label='CAB {:d}, LAI {:d}'.format(cab,lai))
             #resax.plot(scales,resplus-decompres,'--',color=my_cmap(l))
             #resax.plot(scales,resapps,'-.',color=my_cmap(l))
             resax.set_xscale('log',base=2)
