@@ -33,3 +33,4 @@ Examples
 * **minimum_example.py**: Minimum working example to retrieve SIF with the wavelet method from a synthetic dataset containing TOC down- and upwelling radiances.
 * **fl_scope.py**:
 * **fl_flox.py**:
+* **fl_hyplant.py**: 
