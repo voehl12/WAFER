@@ -4,7 +4,7 @@ from r_opts import rspline,rtanh,rpoly
 from ih import prepare_input
 import matplotlib.pyplot as plt
 import scipy
-from utils import wavelets,plotting, funcs
+from utils import wavelets,plotting,funcs,results
 from SFM import SFM,SFM_BSpline
 from scipy import optimize
 import tikzplotlib
@@ -61,6 +61,8 @@ for noise in n:
     diurnal = []
     diurnalsfm = []
     errs_750 = []
+    scope_res = results.retrieval_res('SCOPE','Cab_LAI',mineval,maxeval,eval_wl,'scope_res')
+    
     for fe in sifeffec:
         for c,cab in enumerate(CAB):
             for l,lai in enumerate(LAI):
@@ -69,6 +71,12 @@ for noise in n:
                 
                 wl, upsignal, whitereference, refl, F,noF = prepare_input.synthetic(cab,lai,fe,wlmin=mineval,wlmax=maxeval,completedir='../cwavelets/libradtranscope/floxseries_ae_oen/brdf/')
                 sfmwl, sfmsignal, sfmref, sfmrefl, sfmF,sfmnoF = prepare_input.synthetic(cab,lai,fe,wlmin=670,wlmax=780,completedir='../cwavelets/libradtranscope/floxseries_ae_oen/brdf/')
+                scope_res.init_wl(wl)
+                if N == 0:
+                    scope_res.initiate_ts_tofile()
+                scope_res.Finp[0] = F
+                
+                
                 """ exax1.plot(sfmwl,sfmsignal,color=cm(i),linewidth=0.3)
                 exax1.plot(sfmwl,sfmref,color=cm(i),linewidth=0.3)
                 exax2.plot(sfmwl,sfmF,color=cm(i),linewidth=0.3,label=r'$C_{{ab}} = {:d} \mu \textrm{{g}}/ \textrm{{cm}}^2$, $\textrm{{LAI}} = {:d} \textrm{{m}}^2/\textrm{{m}}^2$'.format(cab,lai)) """
@@ -87,6 +95,7 @@ for noise in n:
                 ######################### SFM retrieval ################################
 
                 x,Fsfm,Rsfm,resnorm, exitflag, nfevas,sfmres = SFM.FLOX_SpecFit_6C(sfmwl,sfmref,sfmsignal,[1,1],1.,wl,alg='trf')
+                scope_res.Fsfm[0] = Fsfm
 
                 ########################################################################
 
@@ -148,6 +157,7 @@ for noise in n:
 
                 polyrefls = np.array(polyrefls)
                 polyR = np.ma.average(polyrefls,weights=weights,axis=0)
+                scope_res.R = polyR
                 R_std = funcs.weighted_std(polyrefls,weights=weights,axis=0)
 
                 """ plt.figure()
@@ -159,9 +169,11 @@ for noise in n:
                 ########################################################################
 
                 F_der = upsignal-polyR*whitereference
+                scope_res.F[0] = F_der
                 F_param = np.polyfit(wl,F_der,1)
                 Finterp = np.poly1d(F_param)
                 F_smooth = Finterp(wl)
+                scope_res.write_ts_tofile('{:d}_{:d}'.format(cab,lai))
 
                 
                 ################## errors and statistics #################################
@@ -172,12 +184,12 @@ for noise in n:
 
                 
                 maes.append(np.mean(np.divide(np.fabs(F_smooth-F),F)))
-                Ftotal,F687,F760,Fr,wlFr,Ffr,wlFfr,specialder = funcs.evaluate_sif(wl,F_der,eval_wl)
-                diurnal.append(specialder)
-                Ftotal,F687,F760,Fr,wlFr,Ffr,wlFfr,specialsfm = funcs.evaluate_sif(wl,Fsfm,eval_wl)
-                diurnalsfm.append(specialsfm)
-                Ftotal,F687,F760,Fr,wlFr,Ffr,wlFfr,specialin = funcs.evaluate_sif(wl,F,eval_wl)
-                inputs.append(specialin)
+                scope_res.evaluate_sif(scope_res.F)
+                diurnal.append(scope_res.F[1][7])
+                scope_res.evaluate_sif(scope_res.Fsfm)
+                diurnalsfm.append(scope_res.Fsfm[1][7])
+                scope_res.evaluate_sif(scope_res.Finp)
+                inputs.append(scope_res.Finp[1][7])
                 Fgrid[c,l] = np.sqrt(np.mean(np.square(F_der-F)))
                 
                 
@@ -194,6 +206,7 @@ for noise in n:
                 ##########################################################################
 
                 i += 1
+                N += 1
     
     
     ################## more plotting and statistics  #################################
