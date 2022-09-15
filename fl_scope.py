@@ -15,28 +15,41 @@ plt.rcParams.update({
     "font.family": "serif",
     "font.serif": ["Computer Modern Roman"]})
 
-# the reflectance is imprinted in the absolute depth of the Fraunhofer lines and therefore the wavelet coefficients. The Fluorescence is not as it does not contribute to the small scale wavelet decomposition.
+
+################### retrieval parameters ###############################
+
+# sifeffec: fluorescence yield (0.02 is SCOPE standard value)
 sifeffec = ['002']
+
+# chlorophyll contents and leaf area indices:
 CAB = []
 CAB = [int(5),int(10)]
 for i in range(2,8):
     CAB.append(i*10)
 
 LAI = [1,2,3,4,5,6,7]
+
+# noise: n=1, no noise added: n=0
 n = [0,1]
 
-
+# order of polynomial for reflectance:
 polyorder = 2
-mineval,maxeval,eval_wl = 745,755,750
+
+# retrieval window and evaluation wavelength for analysis
 mineval,maxeval,eval_wl = 754,773,760
-mineval,maxeval,eval_wl = 745,755,750
+#mineval,maxeval,eval_wl = 745,755,750
+
+# initial decomposition scales (=[2^jmin,...,2^jmax]) from which optimal scales are determined:
+jmin = -2.5
+jmax = 3
+nlevels = 2048
+
+########################################################################
 
 cm = plotting.get_colormap(len(CAB)*len(LAI))
 
 compfig,compax = plt.subplots()
-testjmin = -2.5
-testjmax = 3
-testnlevels = 2048
+
 N = 0
 #exfig,(exax1,exax2) = plt.subplots(1,2)
 for noise in n:
@@ -51,6 +64,8 @@ for noise in n:
     for fe in sifeffec:
         for c,cab in enumerate(CAB):
             for l,lai in enumerate(LAI):
+
+                ############### data preparation #######################################
                 
                 wl, upsignal, whitereference, refl, F,noF = prepare_input.synthetic(cab,lai,fe,wlmin=mineval,wlmax=maxeval,completedir='../cwavelets/libradtranscope/floxseries_ae_oen/brdf/')
                 sfmwl, sfmsignal, sfmref, sfmrefl, sfmF,sfmnoF = prepare_input.synthetic(cab,lai,fe,wlmin=670,wlmax=780,completedir='../cwavelets/libradtranscope/floxseries_ae_oen/brdf/')
@@ -67,11 +82,17 @@ for noise in n:
                 sfmnoise, sfmref =  prepare_input.add_noise(sfmref,1000,noise)
                 sfmnoise, sfmsignal =  prepare_input.add_noise(sfmsignal,1000,noise)
 
+                ########################################################################
+
+                ######################### SFM retrieval ################################
+
                 x,Fsfm,Rsfm,resnorm, exitflag, nfevas,sfmres = SFM.FLOX_SpecFit_6C(sfmwl,sfmref,sfmsignal,[1,1],1.,wl,alg='trf')
 
+                ########################################################################
+
+                ############### initial guess and reflectance optimization #############
+
                 appref = np.divide(upsignal,whitereference)
-               
-        
                 nopeak_wl, nopeak_appref = prepare_input.rm_peak(wl,appref) 
     
                 p_init = np.polyfit(nopeak_wl,nopeak_appref,polyorder)
@@ -80,19 +101,16 @@ for noise in n:
                 #p_init[-1] = p_init[-1] - 0.3
                 interp = np.poly1d(p_init)
                 poly_R_init = interp(wl)
-                
-
-                
-                
-                    
                     
                 if i == 0:
-                    decfig,decax = plt.subplots()
-                    newdecomp = wavelets.decomp(testjmin,testjmax,testnlevels)
+                    # decomposition levels only adjusted for first dataset, to save time, others are assumed to be similar enough
+                    newdecomp = wavelets.decomp(jmin,jmax,nlevels)
                     newdecomp.adjust_levels(upsignal)
                     newdecomp.create_comps(upsignal)
-                    print(newdecomp.jmin,newdecomp.jmax,wavelets.get_wlscales(newdecomp.scales*(wl[1]-wl[0])))
+                    
+                    ######################## plotting ######################################################
                     plotting.plot_powerspectrum(wl,newdecomp.comps,newdecomp.scales,wavelets.get_wlscales(newdecomp.scales*(wl[1]-wl[0])),'upsignal_decomp')
+                    decfig,decax = plt.subplots()
                     decax.plot(wl,newdecomp.comps[5],label=r'$\hat{s}$',color='forestgreen')
                     newdecomp.create_comps(whitereference)
                     plotting.plot_powerspectrum(wl,newdecomp.comps,newdecomp.scales,wavelets.get_wlscales(newdecomp.scales*(wl[1]-wl[0])),'whitereference_decomp')
@@ -100,7 +118,6 @@ for noise in n:
                     ax2 = decax.twinx()
                     ax2.plot(wl,upsignal,color='forestgreen',linewidth=0.8,linestyle='dashed',label=r'$s$')
                     ax2.plot(wl,whitereference,color='tab:orange',linewidth=0.8,linestyle='dashed',label=r'$s_0$')
-                    
                     ax2.set_ylabel(r'Radiance [mW nm$^{-1}$ m$^{-2}$ ster$^{-1}$]')
                     ax2.legend(loc='upper right')
                     decax.legend(loc='upper left')
@@ -108,63 +125,52 @@ for noise in n:
                     decax.set_ylim(-4,4)
                     decax.set_xlabel(r'Wavelength [nm]')
                     decax.set_ylabel(r'Coefficient Strength')
-                    newdecomp.create_comps(F)
-                    #plotting.plot_powerspectrum(wl,newdecomp.comps,newdecomp.scales,wavelets.get_wlscales(newdecomp.scales*(wl[1]-wl[0])),'F_decomp')
-                    #decfig.savefig('decomp_onelevel.pdf')
                     tikzplotlib.save(figure=decfig,filepath='decomp_onelevel.tex')
                     plt.show()
+                    ##########################################################################################
             
 
-    
-            
-    
-                weights = wavelets.determine_weights(upsignal,newdecomp.scales)
-                print(weights)
+                coeffs,ress = rpoly.optimize_coeffs(wl,whitereference,upsignal,p_init,newdecomp)
 
-                coeffs,ress = rpoly.optimize_coeffs(wl,whitereference,upsignal,p_init,newdecomp.scales,lbl=1)
-                """ plt.figure()
-                plt.plot(ress[0],label='Initial Residual')
-                plt.plot(ress[1],label='Final Residual')
-                plt.legend()
-                plt.show() """
+                ########################################################################
+
+                ############# weighting and final reflectance ##########################
+                weights = newdecomp.calc_weights(upsignal)
+                
                 coeffs = np.array(coeffs)
                 polyrefls = []
-                cmap = plotting.get_colormap(len(coeffs))
+                #cmap = plotting.get_colormap(len(coeffs))
                 #plt.figure()
                 for j,polycoef in enumerate(coeffs):
                     interp = np.poly1d(polycoef)
                     polyrefls.append(interp(wl))
                     #plt.plot(wl,interp(wl),color=cmap(i))
 
-        
-        
                 polyrefls = np.array(polyrefls)
                 polyR = np.ma.average(polyrefls,weights=weights,axis=0)
                 R_std = funcs.weighted_std(polyrefls,weights=weights,axis=0)
+
                 """ plt.figure()
-                plt.plot(wl,inpR,color='forestgreen',label=r'Input')
-                plt.plot(wl,appref,color='tab:blue',label=r'Apparent Reflectance')
-                plt.plot(wl,Rsfm,label=r'Spectral Fitting Method',color='limegreen')
-                plt.plot(wl,polyR,color='tab:red',label=r'Wavelet Reflectance')
-                
-                #plt.xlim(670,780)
-                #plt.ylim(0.3,0.6)
-                
+                plt.plot(ress[0],label='Initial Residual')
+                plt.plot(ress[1],label='Final Residual')
                 plt.legend()
-                plt.xlabel(r'Wavelength [nm]')
-                plt.ylabel(r'Reflectance')
-                plt.savefig('FLrefl_lai{:d}_cab{:d}_noise{:d}_poly2_looseboundary.pdf'.format(lai,cab,noise)) """
+                plt.show() """
 
-
+                ########################################################################
 
                 F_der = upsignal-polyR*whitereference
+                F_param = np.polyfit(wl,F_der,1)
+                Finterp = np.poly1d(F_param)
+                F_smooth = Finterp(wl)
+
+                
+                ################## errors and statistics #################################
+
                 F_err = np.sqrt(np.square(sensornoise) + np.square(np.multiply(whitereference,R_std)) + np.square(np.multiply(polyR,refnoise)))
                 Ferr_750 = F_err[np.argmin(np.fabs(wl-760))]
                 errs_750.append(Ferr_750)
 
-                F_param = np.polyfit(wl,F_der,1)
-                Finterp = np.poly1d(F_param)
-                F_smooth = Finterp(wl)
+                
                 maes.append(np.mean(np.divide(np.fabs(F_smooth-F),F)))
                 Ftotal,F687,F760,Fr,wlFr,Ffr,wlFfr,specialder = funcs.evaluate_sif(wl,F_der,eval_wl)
                 diurnal.append(specialder)
@@ -174,6 +180,8 @@ for noise in n:
                 inputs.append(specialin)
                 Fgrid[c,l] = np.sqrt(np.mean(np.square(F_der-F)))
                 
+                
+                ################## plotting #############################################
                 if i == 0:
 
                     resax.plot(wl,F_der,'--',label=r'Wavelet derived',color=cm(i),alpha=0.5)
@@ -183,16 +191,13 @@ for noise in n:
                     resax.plot(wl,F_der,'--',color=cm(i),alpha=0.5)
                     resax.plot(wl,F_smooth,color=cm(i))
                     resax.plot(wl,F,linestyle='dotted',color=cm(i))
-                
+                ##########################################################################
 
-                #plt.plot(wl,Fsfm,label=r'Spectral Fitting Method',color='tab:blue')
-                
-                
                 i += 1
+    
+    
+    ################## more plotting and statistics  #################################
     meshname = 'scope_rsme_{:d}{:d}_{}.pdf'.format(mineval,maxeval,noise)
-    
-    
-    
     if noise == 0:
         meshtext = r'{:d}-{:d} nm'.format(mineval,maxeval)
         #resax.plot(maes,'.',label='FL, no noise')
@@ -236,8 +241,6 @@ for noise in n:
     #exax2.legend(loc='upper left')
     #tikzplotlib.save(figure=exfig,filepath='example_specs.tex')
  
-""" resax.set_xlabel('Simulation Number')
-resax.set_ylabel('Relative mean error') """
 
 one = np.linspace(0,np.max(allmax),100)            
 compax.set_xlabel(r'$F_{{{:d}}}$ Input [mW nm$^{{-1}}$ m$^{{-2}}$ ster$^{{-1}}$]'.format(eval_wl))   
