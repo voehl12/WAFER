@@ -18,6 +18,9 @@ Functionality
 ------------------------
 
 The heart of the method is the optimization between upwelling radiance and reference to retrieve a relative reflectance by comparing absolute absorption line depths filtered for and quantified by means of a wavelet transformation. This optimization also happens in the wavelet space. 
+The reflectance is imprinted in the absolute depth of the Fraunhofer lines and therefore the wavelet coefficients. The Fluorescence is not as it does not contribute to the small scale wavelet decomposition.
+
+
 
 
 
@@ -25,7 +28,7 @@ Folders
 -------------------
 * **r_opts**: contains the optimization scripts for different reflectance parametrizations. Possible are polynomial, piece-wise spline or hyperbolic tangent. The most robust, few parameters but still flexible enough is the 2nd order polynomial for a small enough wavelength window and therefore recommendend. 
 * **ih**: contains a script with several functions to read and provide different kinds of input data (also to match a highly resolved solar spectrum to the data as a reference) and a script to prepare the data (i.e. add noise, deconvolve, add spectral response function, remove peaks from apparent reflectance). 
-* **utils**: contains tools concerning wavelet decompositions (including the important decomposition class which handles selection of decomposition levels as well as calculation of masks and weights) and plotting.
+* **utils**: contains tools concerning wavelet decompositions (including the important decomposition class which handles selection of decomposition levels as well as calculation of masks and weights) and plotting. The file funcs.py contains useful functions like calculating the weighted standard deviation, other statistical evaluation methods. The file results.py contains a class that handles all results (writes to file and evaluates sif parameters). 
 * **SFM**: Python implementation of the SFM (adapted from the original [matlab version](https://gitlab.com/ltda/flox-specfit))
 
 Examples
