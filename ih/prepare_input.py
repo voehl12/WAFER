@@ -5,6 +5,17 @@ import matplotlib.pyplot as plt
 from matplotlib import cm
 import xarray as xr
 
+
+""" 
+functions to prepare data for the wavelet retrieval.
+
+combining functions to prepare arrays of radiances for SIF retrieval depending on the dataset
+the setup and whether the functions are useful completely depends on how the data is stored. 
+
+additionally, there are functions to add noise and remove the peaks in the apparent reflectance for the inital guess of the reflectance
+
+"""
+
 def synthetic(cab,lai,feffef,wlmin=0,wlmax=1000,completedir='../cwavelets/libradtranscope/floxseries_ae_oen/reflectance/'):
     completename = completedir+'radcomplete_{}_{:d}_{:d}_ae_conv.dat'.format(feffef,cab,lai)
     woFname = completedir+'radwoF_{}_{:d}_{:d}_ae_conv.dat'.format(feffef,cab,lai)
@@ -107,9 +118,7 @@ def hyplant(pixelg,pixelw,wlmin=0,wlmax=1000,path='../../Data/20200625-OEN-1132-
     def call_data(path):
         return np.fromfile(path, dtype=np.uint16)
     
-    #bands = 1024
-    #width = 384
-    #length = 4065
+
     
 
     def find_spectrum(pixel,data,bands,width):
@@ -337,12 +346,14 @@ def match_solspec(wl,fwhm,path='../../Data/Sun/SUN001kurucz.dat'):
     return sradnew,gaussf
 
 def rm_peak(wl,appref):
-    minpeak = np.argmin(np.fabs(wl-758))
-    maxpeak = np.argmin(np.fabs(wl-769))
+    minpeaka = np.argmin(np.fabs(wl-758))
+    maxpeaka = np.argmin(np.fabs(wl-769))
+    minpeakb = np.argmin(np.fabs(wl-685))
+    maxpeakb = np.argmin(np.fabs(wl-690))
     nopeak_appref = []
     nopeak_wl = []
     for i in range(len(wl)):
-        if i < minpeak or i > maxpeak:
+        if np.logical_and(i < minpeaka or i > maxpeaka,i < minpeakb or i > maxpeakb):
             nopeak_appref.append(appref[i])
             nopeak_wl.append(wl[i])
     
