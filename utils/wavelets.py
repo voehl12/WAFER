@@ -47,11 +47,11 @@ class decomp:
         self.comps = comps
 
     def calc_mask(self,testsignal):
-        comps = self.create_comps(testsignal)
+        self.create_comps(testsignal)
         masks = []
         for i in range(len(self.scales)):
-            negmask = np.ma.masked_where(comps[i] <= 0, comps[i])
-            masks.append(np.ma.masked_where(comps[i] <= -np.median(np.fabs(comps[i,negmask.mask]))/0.6745, comps[i]))
+            negmask = np.ma.masked_where(self.comps[i] <= 0, self.comps[i])
+            masks.append(np.ma.masked_where(self.comps[i] <= -np.median(np.fabs(self.comps[i,negmask.mask]))/0.6745, self.comps[i]))
         self.masks = masks
         # thresholding: wavelet tour, page 565
         
