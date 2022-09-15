@@ -34,7 +34,6 @@ def optimize_coeffs(wl:np.array,ref:np.array, signal:np.array, initial_guess:np.
     """
 
     def diff_func_poly(coeffs,*args):
-        print(args)
         # get current reflectance:
         interp = np.poly1d(coeffs)
         refl = interp(wl)
