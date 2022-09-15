@@ -3,6 +3,9 @@ import numpy as np
 import pywt
 
 class decomp:
+    """ class that manages all decomposition characteristics and can hold the decomposition but also the masking for absorption lines
+        it can also be used to determine the best decomposition levels from weighting
+    """
     def __init__(self,jmin,jmax,nlevel) -> None:
         
         self.jmin = jmin
@@ -44,13 +47,29 @@ class decomp:
         self.comps = comps
 
     def calc_mask(self,testsignal):
-        comps = create_decomp_p(testsignal,self.scales)
+        comps = self.create_comps(testsignal)
         masks = []
         for i in range(len(self.scales)):
             negmask = np.ma.masked_where(comps[i] <= 0, comps[i])
             masks.append(np.ma.masked_where(comps[i] <= -np.median(np.fabs(comps[i,negmask.mask]))/0.6745, comps[i]))
         self.masks = masks
         # thresholding: wavelet tour, page 565
+        
+
+    def calc_weights(self,testsignal):
+        self.calc_mask(testsignal)
+        contrib_counts = np.zeros((len(self.scales)))
+        for j in range(len(self.scales)):
+            scalecounts = 0
+            
+            try:
+                for k in self.masks[j].mask:
+                    
+                    if k == True:
+                        scalecounts += 1
+                contrib_counts[j] += scalecounts
+            except: continue
+        self.weights = contrib_counts
 
 
 
