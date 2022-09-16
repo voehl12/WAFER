@@ -32,8 +32,9 @@ for range1 in ranges:
     plottimes = times.dt.strftime('%H:%M').data
 
     ts_res = results.retrieval_res('Oensingen',day,windowmin,windowmax,eval_wl,'timeseries_poly2_R_F')
-    ts_res.initiate_ts_tofile()
     ts_res.init_wl(wl)
+    ts_res.initiate_ts_tofile()
+    
 
         
     rangefig, rangeax = plt.subplots()
@@ -119,7 +120,7 @@ for range1 in ranges:
         sfmmax = np.argmin(np.fabs(wlorig-780))
         sfmWL = wlorig[sfmmin:sfmmax]
         x,Fsfm,Rsfm,resnorm, exitflag, nfevas,sfmres = SFM.FLOX_SpecFit_6C(sfmWL,whitereferenceorig[sfmmin:sfmmax],signalorig[sfmmin:sfmmax],[1,1],1.,wl,alg='trf')
-        ts_res.Fsfm[0] = Fsfm
+        ts_res.Fsfm.spec = Fsfm
         sfm_residuals.append(sfmres)
         sunreference,_ = prepare_input.match_solspec(wl,0.3)
     
@@ -157,7 +158,7 @@ for range1 in ranges:
 
 
         F_der = upsignal-polyR*whitereference
-        ts_res.F[0] = F_der
+        ts_res.F.spec = F_der
         ts_res.write_ts_tofile(plottimes[t])
         
 
@@ -177,10 +178,10 @@ for range1 in ranges:
         Finterp = np.poly1d(F_param)
         F_smooth = Finterp(wl)
 
-        ts_res.evaluate_sif(ts_res.F)
-        diurnal.append(ts_res.F[1][7])
-        ts_res.evaluate_sif(ts_res.Fsfm)
-        diurnalsfm.append(ts_res.Fsfm[1][7])
+        ts_res.F.evaluate_sif()
+        diurnal.append(ts_res.F.spec_val)
+        ts_res.Fsfm.evaluate_sif()
+        diurnalsfm.append(ts_res.Fsfm.spec_val)
         
         
         Fws.append(F_der)
