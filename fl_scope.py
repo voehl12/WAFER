@@ -74,7 +74,7 @@ for noise in n:
                 scope_res.init_wl(wl)
                 if N == 0:
                     scope_res.initiate_ts_tofile()
-                scope_res.Finp[0] = F
+                scope_res.Finp.spec = F
                 
                 
                 """ exax1.plot(sfmwl,sfmsignal,color=cm(i),linewidth=0.3)
@@ -95,7 +95,7 @@ for noise in n:
                 ######################### SFM retrieval ################################
 
                 x,Fsfm,Rsfm,resnorm, exitflag, nfevas,sfmres = SFM.FLOX_SpecFit_6C(sfmwl,sfmref,sfmsignal,[1,1],1.,wl,alg='trf')
-                scope_res.Fsfm[0] = Fsfm
+                scope_res.Fsfm.spec = Fsfm
 
                 ########################################################################
 
@@ -169,7 +169,7 @@ for noise in n:
                 ########################################################################
 
                 F_der = upsignal-polyR*whitereference
-                scope_res.F[0] = F_der
+                scope_res.F.spec = F_der
                 F_param = np.polyfit(wl,F_der,1)
                 Finterp = np.poly1d(F_param)
                 F_smooth = Finterp(wl)
@@ -183,13 +183,13 @@ for noise in n:
                 errs_750.append(Ferr_750)
 
                 
-                maes.append(np.mean(np.divide(np.fabs(F_smooth-F),F)))
-                scope_res.evaluate_sif(scope_res.F)
-                diurnal.append(scope_res.F[1][7])
-                scope_res.evaluate_sif(scope_res.Fsfm)
-                diurnalsfm.append(scope_res.Fsfm[1][7])
-                scope_res.evaluate_sif(scope_res.Finp)
-                inputs.append(scope_res.Finp[1][7])
+                maes.append(np.mean(np.divide(np.fabs(F_der-F),F)))
+                scope_res.F.evaluate_sif()
+                diurnal.append(scope_res.F.spec_val)
+                scope_res.Fsfm.evaluate_sif()
+                diurnalsfm.append(scope_res.Fsfm.spec_val)
+                scope_res.Finp.evaluate_sif()
+                inputs.append(scope_res.Finp.spec_val)
                 Fgrid[c,l] = np.sqrt(np.mean(np.square(F_der-F)))
                 
                 
