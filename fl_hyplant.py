@@ -113,9 +113,9 @@ for i,polycoef in enumerate(coeffs[0]):
 
 
 polyrefls = np.array(polyrefls)
-polyR = np.average(polyrefls,weights=weights,axis=0)
+polyR, R_err = funcs.weighted_std(polyrefls,weights=weights,axis=0)
 hyplant_res.R = polyR
-R_err = funcs.weighted_std(polyrefls,weights=weights,axis=0)
+
 
 
 

@@ -156,9 +156,9 @@ for noise in n:
                     #plt.plot(wl,interp(wl),color=cmap(i))
 
                 polyrefls = np.array(polyrefls)
-                polyR = np.ma.average(polyrefls,weights=weights,axis=0)
+                polyR, R_std = funcs.weighted_std(polyrefls,weights=weights,axis=0)
                 scope_res.R = polyR
-                R_std = funcs.weighted_std(polyrefls,weights=weights,axis=0)
+                
 
                 """ plt.figure()
                 plt.plot(ress[0],label='Initial Residual')

@@ -138,9 +138,9 @@ for range1 in ranges:
         
         
         polyrefls = np.array(polyrefls)
-        polyR = np.average(polyrefls,weights=weights,axis=0)
+        polyR, R_err = funcs.weighted_std(polyrefls,weights=weights,axis=0)
         ts_res.R = polyR
-        R_err = funcs.weighted_std(polyrefls,weights=weights,axis=0)
+        
 
         appR_err = appref*np.sqrt(np.square(np.divide(uperror,upsignal)) + np.square(np.divide(downerror,whitereference)))
         #plt.plot(wl,polyR)

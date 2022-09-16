@@ -70,8 +70,8 @@ for j,polycoef in enumerate(coeffs):
     polyrefls.append(interp(wl))
     
 polyrefls = np.array(polyrefls)
-polyR = np.ma.average(polyrefls,weights=weights,axis=0)
-R_std = funcs.weighted_std(polyrefls,weights=weights,axis=0)
+polyR, R_std = funcs.weighted_std(polyrefls,weights=weights,axis=0)
+
 
 ########################################################################
 
