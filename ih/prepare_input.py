@@ -118,9 +118,6 @@ def hyplant(pixelg,pixelw,wlmin=0,wlmax=1000,path='../../Data/20200625-OEN-1132-
     def call_data(path):
         return np.fromfile(path, dtype=np.uint16)
     
-
-    
-
     def find_spectrum(pixel,data,bands,width):
         spectrum = []
         line = np.floor(pixel / width) 
@@ -137,8 +134,6 @@ def hyplant(pixelg,pixelw,wlmin=0,wlmax=1000,path='../../Data/20200625-OEN-1132-
     data = call_data(path)
     wl,width,length,bands = get_wavelengths()
     wl = np.array(wl)
-    print(wl)
-    pixels = width*length
     startind = np.argmin(np.fabs(wl-wlmin))
     endind = np.argmin(np.fabs(wl-wlmax))
     shift = [-2,-1,0,1,2]
@@ -146,14 +141,6 @@ def hyplant(pixelg,pixelw,wlmin=0,wlmax=1000,path='../../Data/20200625-OEN-1132-
     upwelling = np.mean(upwelling_samples,axis=0)
     reference_samples = np.array([find_spectrum(pixelw+shift[i],data,bands,width) for i in range(len(shift))])
     reference = np.mean(reference_samples,axis=0)
-    """ for i in range(samples):
-        spectrum = np.zeros(bands)
-        while sum(spectrum) < 100.0:
-            pix = int(np.random.random_sample() * pixels)
-            spectrum = find_spectrum(pix,data,bands,width)
-        
-        plt.plot(wl,spectrum,label='pixel %d' % pix)
-        #plt.xlim(649,814) """
     
     plt.figure()
     plt.plot(wl,upwelling)
@@ -164,14 +151,11 @@ def hyplant(pixelg,pixelw,wlmin=0,wlmax=1000,path='../../Data/20200625-OEN-1132-
     return wl[startind:endind], upwelling[startind:endind]/100, reference[startind:endind]/100
 
 
-def flox_single(i,wlmin=0,wlmax=1000):
+def flox_single(day,time,wlmin=0,wlmax=1000,datapath = '../../FloX_Davos/FloX_JB023HT_S20210326_E20210610_C20210615.nc'):
     day = '2021-04-23'
     timestampbegin = day+' 05:00:00'
     timestampend = day+' 17:00:00'
-    timestamp = day+' '+i
-    #datapath = "../FloX_Davos/SDcard/FloX_JB038AD_S20210603_E20211119_C20211208.nc"
-    #datapath = "../../FloX_Davos/Apr2022/JB038AD_S20220324_E20220420_C20220427.nc"
-    datapath = '../../FloX_Davos/FloX_JB023HT_S20210326_E20210610_C20210615.nc'
+    timestamp = day+' '+time  
     fluodata = xr.open_dataset(datapath, group="FLUO")
     metadata = xr.open_dataset(datapath,group='METADATA')
     wlfluo = np.array(fluodata["wavelengths"])
@@ -180,13 +164,7 @@ def flox_single(i,wlmin=0,wlmax=1000):
     uperrors = fluodata["upwelling"].sel(time=slice(timestampbegin, timestampend)).resample(time="15Min").std("time").sel(time=timestamp,method='nearest')
     downerrors = fluodata["downwelling"].sel(time=slice(timestampbegin, timestampend)).resample(time="15Min").std("time").sel(time=timestamp,method='nearest')
     iflda_ref = metadata['SIF_A_ifld [mW m-2nm-1sr-1]'].sel(time=slice(timestampbegin, timestampend)).resample(time="15Min").mean("time").sel(time=timestamp,method='nearest')
-    #iflda_ref = fluodata['sif_a_ifld'].sel(time=slice(timestampbegin, timestampend)).resample(time="15Min").mean("time").sel(time=timestamp,method='nearest')
-    
-    #iflda_ref = fluodata['sif_a_ifld'].sel(time=slice(timestampbegin, timestampend)).resample(time="15Min").mean("time")
-    #iflda_err = fluodata['sif_a_ifld'].sel(time=slice(timestampbegin, timestampend)).resample(time="15Min").std("time")
-    #ifldb_ref = fluodata['sif_b_ifld'].sel(time=slice(timestampbegin, timestampend)).resample(time="15Min").mean("time")
-    #ifldb_err = fluodata['sif_b_ifld'].sel(time=slice(timestampbegin, timestampend)).resample(time="15Min").std("time")
-    int_num = len(upseries)
+
     wl = wlfluo
     if wlmin == 0:
         wlmin = wl[0]
@@ -200,15 +178,10 @@ def flox_single(i,wlmin=0,wlmax=1000):
 
     return wl, signal*1000,whitereference*1000,iflda_ref,error,time,uperrors[startind:endind]
 
-def flox_allday(day,wlmin=0,wlmax=1000):
+def flox_allday(day,datapath,wlmin=0,wlmax=1000):
     timestampbegin = day+' 04:15:00'
     timestampend = day+' 16:50:00'
     
-    #datapath = "../../FloX_Davos/SDcard/FloX_JB038AD_S20210603_E20211119_C20211208.nc"
-    #datapath = "../../FloX_Davos/Apr2022/JB038AD_S20220324_E20220420_C20220427.nc"
-    datapath = '../../FloX_Davos/Oensingen/FloX_JB023HT_S20210326_E20210610_C20210615.nc'
-    #datapath = '../../FloX_Davos/Oensingen/JuneJuly2022/JB023HT_S20220602_E20220727_C20220729.nc'
-    #datapath = '../../FloX_Davos/shading/oens2022/JB023HT_S20220603_E20220704_C20220705.nc'
     fluodata = xr.open_dataset(datapath, group="FLUO")
     metadata = xr.open_dataset(datapath,group='METADATA')
     wl = np.array(fluodata["wavelengths"])
@@ -225,8 +198,8 @@ def flox_allday(day,wlmin=0,wlmax=1000):
     downseries = fluodata["downwelling"].sel(time=slice(timestampbegin, timestampend)).resample(time="5Min").mean("time").sel(wavelengths=slice(wlmin,wlmax))
     uperrors = fluodata["upwelling"].sel(time=slice(timestampbegin, timestampend)).resample(time="5Min").std("time").sel(wavelengths=slice(wlmin,wlmax))
     downerrors = fluodata["downwelling"].sel(time=slice(timestampbegin, timestampend)).resample(time="5Min").std("time").sel(wavelengths=slice(wlmin,wlmax))
+    
     #iflda_ref = fluodata['sif_a_ifld'].sel(time=slice(timestampbegin, timestampend)).resample(time="5Min").mean("time")
-
     iflda_ref = metadata['SIF_A_ifld [mW m-2nm-1sr-1]'].sel(time=slice(timestampbegin, timestampend)).resample(time="5Min").mean("time")
     iflda_errors = metadata['SIF_A_ifld [mW m-2nm-1sr-1]'].sel(time=slice(timestampbegin, timestampend)).resample(time="5Min").std("time")
     ifldb_ref = metadata['SIF_B_ifld [mW m-2nm-1sr-1]'].sel(time=slice(timestampbegin, timestampend)).resample(time="5Min").mean("time")
