@@ -16,14 +16,26 @@ plt.rcParams.update({
     "font.family": "serif",
     "font.serif": ["Computer Modern Roman"]})
 
+################### retrieval parameters ###############################
 
 ranges = [[660,679,670],[681,695,687],[700,720,710],[725,740,735],[745,755,750],[754,773,760],[770,800,790]]
 ranges = [[681,695,687]]
-#ranges = [[684,702,687],[745,757,750],[753,775,760]]
-#ranges = [[684,702,687],[753,775,760]]
+site = 'Oensingen'
 day = '2021-04-23'
+
+jmin = -2.7
+jmax = 4
+nlevels = 2048
+polyorder = 2
+
+########################################################################
+
+
 for range1 in ranges:
     print(range1)
+
+    ############### data & results preparation #######################################
+
     windowmin = range1[0]
     windowmax = range1[1]
     eval_wl = range1[2]
@@ -31,11 +43,26 @@ for range1 in ranges:
     times, wl, upseries, downseries, uperrors, downerrors, iflda_ref, iflda_errors, ifldb_ref, ifldb_errors = prepare_input.flox_allday(day,wlmin=windowmin,wlmax=windowmax)
     plottimes = times.dt.strftime('%H:%M').data
 
-    ts_res = results.retrieval_res('Oensingen',day,windowmin,windowmax,eval_wl,'timeseries_poly2_R_F')
+    ts_res = results.retrieval_res(site,day,windowmin,windowmax,eval_wl,'timeseries_poly2_R_F')
     ts_res.init_wl(wl)
     ts_res.initiate_ts_tofile()
-    
 
+    diurnal = []
+    diurnalsfm = []
+    diurnalR = []
+    diurnalRsfm = []
+    meanerrors = []
+    diurnalRerrors = []
+    diurnalFerrors = []
+    diurnalappRerrors = []
+    Fws = []
+    Fsfms = []
+    sfm_residuals = []
+    
+    cm = plotting.get_colormap(len(times))
+    resfig,(resax1,resax2) = plt.subplots(1,2,figsize=(10,6))
+    scatfig, scatax = plt.subplots()
+    datfig, datax = plt.subplots()
         
     rangefig, rangeax = plt.subplots()
     rangeax.plot(wlorig,upseriesorig[10])
@@ -47,31 +74,12 @@ for range1 in ranges:
     tikzplotlib.save(figure=rangefig,filepath=figname1tex)
     rangefig.savefig(figname1)
     
+    ########################################################################
 
-
-    polyorder = 2
-    
-    diurnal = []
-    diurnalsfm = []
-    diurnalR = []
-    diurnalRsfm = []
-    meanerrors = []
-    diurnalRerrors = []
-    diurnalFerrors = []
-    diurnalappRerrors = []
-    testjmin = -2.7
-    testjmax = 4
-    testnlevels = 2048
-    cm = plotting.get_colormap(len(times))
-    resfig,(resax1,resax2) = plt.subplots(1,2,figsize=(10,6))
-    scatfig, scatax = plt.subplots()
-    datfig, datax = plt.subplots()
-    Fws = []
-    Fsfms = []
-    sfm_residuals = []
+        
     for t,time in enumerate(times):
         print(t,time.data)
-        
+        ############### data preparation #######################################
         uperror = uperrors[t]
         downerror = downerrors[t]
         meanerrors.append(np.mean(uperror))
@@ -81,11 +89,21 @@ for range1 in ranges:
     
         whitereference = downseries[t]
         
-        iflda = iflda_ref[t]
-        appref = np.divide(upsignal,whitereference)
+        ############### iFLD and SFM #############
+        ts_res.iFLD[0] = iflda_ref[t]
 
-
+        sfmmin = np.argmin(np.fabs(wlorig-670))
+        sfmmax = np.argmin(np.fabs(wlorig-780))
+        sfmWL = wlorig[sfmmin:sfmmax]
+        x,Fsfm,Rsfm,resnorm, exitflag, nfevas,sfmres = SFM.FLOX_SpecFit_6C(sfmWL,whitereferenceorig[sfmmin:sfmmax],signalorig[sfmmin:sfmmax],[1,1],1.,wl,alg='trf')
+        ts_res.Fsfm.spec = Fsfm
+        sfm_residuals.append(sfmres)
+        ts_res.Fsfm.evaluate_sif()
+        diurnalsfm.append(ts_res.Fsfm.spec_val)
         
+        ############### initial guess and reflectance optimization #############
+
+        appref = np.divide(upsignal,whitereference)
         nopeak_wl, nopeak_appref = prepare_input.rm_peak(wl,appref) 
 
         if len(nopeak_appref) < len(wl):
@@ -100,28 +118,20 @@ for range1 in ranges:
         interp = np.poly1d(p_init)
         poly_R_init = interp(wl)
 
-    
-        
-                
             
         if t == 0:
 
-            newdecomp = wavelets.decomp(testjmin,testjmax,testnlevels)
+            newdecomp = wavelets.decomp(jmin,jmax,nlevels)
             newdecomp.adjust_levels(upsignal)
             print(newdecomp.jmin,newdecomp.jmax,wavelets.get_wlscales(newdecomp.scales*(wl[1]-wl[0])))
             
 
     
-    
+        ############# weighting and final reflectance ##########################
         newdecomp.calc_weights(upsignal)
         weights = newdecomp.weights
 
-        sfmmin = np.argmin(np.fabs(wlorig-670))
-        sfmmax = np.argmin(np.fabs(wlorig-780))
-        sfmWL = wlorig[sfmmin:sfmmax]
-        x,Fsfm,Rsfm,resnorm, exitflag, nfevas,sfmres = SFM.FLOX_SpecFit_6C(sfmWL,whitereferenceorig[sfmmin:sfmmax],signalorig[sfmmin:sfmmax],[1,1],1.,wl,alg='trf')
-        ts_res.Fsfm.spec = Fsfm
-        sfm_residuals.append(sfmres)
+        
         sunreference,_ = prepare_input.match_solspec(wl,0.3)
     
         coeffs = rpoly.optimize_coeffs(wl,whitereference,upsignal,p_init,newdecomp)
@@ -145,21 +155,18 @@ for range1 in ranges:
 
         appR_err = appref*np.sqrt(np.square(np.divide(uperror,upsignal)) + np.square(np.divide(downerror,whitereference)))
         #plt.plot(wl,polyR)
-        
-        """ plt.plot(wl,polyR,color='tab:red',label=r'Wavelet Reflectance')
-        plt.plot(wl,appref,color='tab:blue',label=r'Apparent Reflectance')
-
-        plt.plot(wl,Rsfm,label=r'Spectral Fitting Method',color='limegreen')
-        plt.xlim(670,780)
-        plt.ylim(0.3,0.6)
-        
-        plt.legend() """
 
 
 
         F_der = upsignal-polyR*whitereference
         ts_res.F.spec = F_der
         ts_res.write_ts_tofile(plottimes[t])
+        F_param = np.polyfit(wl,F_der,2)
+        Finterp = np.poly1d(F_param)
+        F_smooth = Finterp(wl)
+
+        ts_res.F.evaluate_sif()
+        diurnal.append(ts_res.F.spec_val)
         
 
         F_err = np.sqrt(np.square(uperror) + np.square(np.multiply(whitereference,R_err)) + np.square(np.multiply(polyR,downerror)))
@@ -174,14 +181,8 @@ for range1 in ranges:
             
 
 
-        F_param = np.polyfit(wl,F_der,2)
-        Finterp = np.poly1d(F_param)
-        F_smooth = Finterp(wl)
-
-        ts_res.F.evaluate_sif()
-        diurnal.append(ts_res.F.spec_val)
-        ts_res.Fsfm.evaluate_sif()
-        diurnalsfm.append(ts_res.Fsfm.spec_val)
+        
+        
         
         
         Fws.append(F_der)
