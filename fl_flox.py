@@ -91,6 +91,7 @@ for range1 in ranges:
         
         ############### iFLD and SFM #############
         ts_res.iFLD[0] = iflda_ref[t]
+        ts_res.iFLD[1] = ifldb_ref[t]
 
         sfmmin = np.argmin(np.fabs(wlorig-670))
         sfmmax = np.argmin(np.fabs(wlorig-780))
@@ -124,6 +125,8 @@ for range1 in ranges:
             newdecomp = wavelets.decomp(jmin,jmax,nlevels)
             newdecomp.adjust_levels(upsignal)
             print(newdecomp.jmin,newdecomp.jmax,wavelets.get_wlscales(newdecomp.scales*(wl[1]-wl[0])))
+        
+        ########################################################################
             
 
     
@@ -144,20 +147,16 @@ for range1 in ranges:
             interp = np.poly1d(polycoef)
             polyrefls.append(interp(wl))
             #plt.plot(wl,interp(wl),color=cmap(i))
-        
-
-        
-        
+        #plt.plot(wl,polyR)
         polyrefls = np.array(polyrefls)
         polyR, R_err = funcs.weighted_std(polyrefls,weights=weights,axis=0)
         ts_res.R = polyR
+
+
+        ########################################################################
         
 
-        appR_err = appref*np.sqrt(np.square(np.divide(uperror,upsignal)) + np.square(np.divide(downerror,whitereference)))
-        #plt.plot(wl,polyR)
-
-
-
+        ############# fluorescence result ##############################################
         F_der = upsignal-polyR*whitereference
         ts_res.F.spec = F_der
         ts_res.write_ts_tofile(plottimes[t])
@@ -167,9 +166,11 @@ for range1 in ranges:
 
         ts_res.F.evaluate_sif()
         diurnal.append(ts_res.F.spec_val)
-        
 
-        F_err = np.sqrt(np.square(uperror) + np.square(np.multiply(whitereference,R_err)) + np.square(np.multiply(polyR,downerror)))
+        ########################################################################
+        
+        ################## result plotting #################################
+        
         if t % 23 == 0:
             resax1.plot(wl,polyR,color=cm(t),linewidth=0.8,label=plottimes[t])
             resax1.plot(wl,appref,'--',color=cm(t),linewidth=0.8)
@@ -179,12 +180,12 @@ for range1 in ranges:
             datax.plot(wlorig,signalorig,color=cm(t),label=plottimes[t],linewidth=0.8)
             datax.plot(wlorig,whitereferenceorig,color=cm(t),linewidth=0.8)
             
+        ########################################################################
 
-
+        ################## errors and statistics #################################
         
-        
-        
-        
+        appR_err = appref*np.sqrt(np.square(np.divide(uperror,upsignal)) + np.square(np.divide(downerror,whitereference)))
+        F_err = np.sqrt(np.square(uperror) + np.square(np.multiply(whitereference,R_err)) + np.square(np.multiply(polyR,downerror)))
         Fws.append(F_der)
         Fsfms.append(Fsfm)
         
@@ -193,20 +194,14 @@ for range1 in ranges:
         diurnalRerrors.append(np.median(R_err))
         diurnalFerrors.append(np.median(F_err))
         diurnalappRerrors.append(np.median(appR_err))
+
+        ########################################################################
     
-        """ plt.figure()
-        plt.plot(wl,F_der,'--',label=r'Wavelet derived',color='tab:red',alpha=0.5)
-        plt.plot(wl,F_smooth,label=r'Polynomial',color='tab:red')
-        plt.plot(wl,Fsfm,label=r'Spectral Fitting Method',color='tab:blue')
-        plt.plot(760,ifldaref,'o',color='tab:blue')
-        plt.legend()
-        plt.title(time)
-        plt.ylim(0,6)
-        plt.show()
-    
-        """
+
     Fws = np.array(Fws)
     Fsfms = np.array(Fsfms)
+
+    ################## more plotting and statistics  #################################
     plt.figure()
     plt.plot(diurnal,np.divide(np.array(diurnal)-np.array(diurnalsfm),diurnal),'.',label='sfm')
     plt.plot(diurnal,np.divide(np.array(diurnal)-np.array(ifldb_ref),diurnal),'.',label='ifld')
