@@ -32,6 +32,6 @@ Folders
 Examples
 ---------
 * **minimum_example.py**: Minimum working example to retrieve SIF with the wavelet method from a synthetic dataset containing TOC down- and upwelling radiances.
-* **fl_scope.py**:
-* **fl_flox.py**:
-* **fl_hyplant.py**: 
+* **fl_scope.py**: Example script to retrieve and analyze (i.e. evaluate and compare to other methods and the input) fluorescence from TOC down- and upwelling simulated radiances. 
+* **fl_flox.py**: Example script to retrieve and analyze (i.e. evaluate and compare to other methods) fluorescence from timeseries data acquired with a FloX-Box and compiled into a NetCDF file (add link to jb_cli)
+* **fl_hyplant.py**: Example script to retrieve fluorescence from airborne acquired data, given a bil datacube and pixelnumbers for vegetated and non-vegetated reference pixels.
