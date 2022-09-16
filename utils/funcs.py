@@ -10,7 +10,7 @@ def weighted_std(values, weights,axis):
     average = np.average(values, weights=weights,axis=axis)
     # Fast and numerically precise:
     variance = np.average((values-average)**2, weights=weights,axis=axis)
-    return np.sqrt(variance)
+    return average, np.sqrt(variance)
 
 
 def calc_rsquared(y,y_m):
