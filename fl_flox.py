@@ -39,8 +39,10 @@ for range1 in ranges:
     windowmin = range1[0]
     windowmax = range1[1]
     eval_wl = range1[2]
-    times, wlorig, upseriesorig, downseriesorig, uperrorsorig, downerrorsorig, iflda_ref, iflda_errors, ifldb_ref, ifldb_errors = prepare_input.flox_allday(day,wlmin=660)
-    times, wl, upseries, downseries, uperrors, downerrors, iflda_ref, iflda_errors, ifldb_ref, ifldb_errors = prepare_input.flox_allday(day,wlmin=windowmin,wlmax=windowmax)
+    # Input preparation: for FloX data, the path to the input netCDF needs to be specified within the function 
+    datapath = '../../FloX_Davos/Oensingen/FloX_JB023HT_S20210326_E20210610_C20210615.nc'
+    times, wlorig, upseriesorig, downseriesorig, uperrorsorig, downerrorsorig, iflda_ref, iflda_errors, ifldb_ref, ifldb_errors = prepare_input.flox_allday(day,datapath,wlmin=660)
+    times, wl, upseries, downseries, uperrors, downerrors, iflda_ref, iflda_errors, ifldb_ref, ifldb_errors = prepare_input.flox_allday(day,datapath,wlmin=windowmin,wlmax=windowmax)
     plottimes = times.dt.strftime('%H:%M').data
 
     ts_res = results.retrieval_res(site,day,windowmin,windowmax,eval_wl,'timeseries_poly2_R_F')
@@ -113,32 +115,17 @@ for range1 in ranges:
             nopeak_appref = pinterp(wl)
             nopeak_wl = wl
     
-        
-
         p_init = np.polyfit(nopeak_wl,nopeak_appref,polyorder)
         interp = np.poly1d(p_init)
         poly_R_init = interp(wl)
 
-            
         if t == 0:
 
             newdecomp = wavelets.decomp(jmin,jmax,nlevels)
             newdecomp.adjust_levels(upsignal)
             print(newdecomp.jmin,newdecomp.jmax,wavelets.get_wlscales(newdecomp.scales*(wl[1]-wl[0])))
         
-        ########################################################################
-            
-
-    
-        ############# weighting and final reflectance ##########################
-        newdecomp.calc_weights(upsignal)
-        weights = newdecomp.weights
-
-        
-        sunreference,_ = prepare_input.match_solspec(wl,0.3)
-    
         coeffs = rpoly.optimize_coeffs(wl,whitereference,upsignal,p_init,newdecomp)
-        #coeffs = np.array(coeffs)
         polyrefls = []
         cmap = plotting.get_colormap(len(coeffs))
         #plt.figure()
@@ -149,14 +136,22 @@ for range1 in ranges:
             #plt.plot(wl,interp(wl),color=cmap(i))
         #plt.plot(wl,polyR)
         polyrefls = np.array(polyrefls)
+        
+        ########################################################################
+              
+        ############# weighting and final reflectance ##########################
+
+        newdecomp.calc_weights(upsignal)
+        weights = newdecomp.weights
+         
         polyR, R_err = funcs.weighted_std(polyrefls,weights=weights,axis=0)
         ts_res.R = polyR
-
 
         ########################################################################
         
 
-        ############# fluorescence result ##############################################
+        ############# SIF extraction and evaluation #############################
+
         F_der = upsignal-polyR*whitereference
         ts_res.F.spec = F_der
         ts_res.write_ts_tofile(plottimes[t])
