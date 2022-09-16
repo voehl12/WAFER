@@ -19,7 +19,7 @@ class fluorescence:
         """
         evaluates fluorescence at characteristic values and calculates integrated fluorescence
         Function also checks whether standard characteristic values (687,760 (O2 bands),684,735nm (rough fluorescence peaks)) are within the retrieval window
-        results are written into the second entry of spec.
+        results are written into the initiated variables of the object.
         """
         Fspectrum = self.spec
         totmin = np.argmin(np.fabs(self.wl-650))
