@@ -38,6 +38,7 @@ refnoise, whitereference = prepare_input.add_noise(whitereference,1000,noise)
 sensornoise, upsignal = prepare_input.add_noise(upsignal,1000,noise)
 
 min_results = results.retrieval_res('SCOPE','Cab_LAI',mineval,maxeval,eval_wl,'scope_res')
+min_results.init_wl(wl)
 
 ########################################################################
 
