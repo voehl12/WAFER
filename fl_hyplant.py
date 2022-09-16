@@ -95,7 +95,7 @@ sfmmin = np.argmin(np.fabs(wlorig-670))
 sfmmax = np.argmin(np.fabs(wlorig-780))
 sfmWL = wlorig[sfmmin:sfmmax]
 x,Fsfm,Rsfm,resnorm, exitflag, nfevas,sfmres = SFM.FLOX_SpecFit_6C(sfmWL,referenceorig[sfmmin:sfmmax],upsignalorig[sfmmin:sfmmax],[1,1],1.,wl,alg='trf')
-hyplant_res.Fsfm[0] = Fsfm
+hyplant_res.Fsfm.spec = Fsfm
 sfm_residuals.append(sfmres)
 sunreference,_ = prepare_input.match_solspec(wl,0.3)
 
@@ -132,7 +132,7 @@ plt.legend()
 
 
 F_der = upsignal-polyR*reference
-hyplant_res.F[0] = F_der
+hyplant_res.F.spec = F_der
 
 
 resax1.plot(wl,polyR,color='forestgreen',linewidth=0.8,label='Reflectance')
@@ -148,10 +148,10 @@ resax2.plot(wl,Fsfm,'--',color='tab:red',linewidth=0.8)
 F_param = np.polyfit(wl,F_der,2)
 Finterp = np.poly1d(F_param)
 F_smooth = Finterp(wl)
-hyplant_res.evaluate_sif(hyplant_res.F)
-diurnal.append(hyplant_res.F[1][7])
-hyplant_res.evaluate_sif(hyplant_res.Fsfm)
-diurnalsfm.append(hyplant_res.Fsfm[1][7])
+hyplant_res.F.evaluate_sif()
+diurnal.append(hyplant_res.F.spec_val)
+hyplant_res.Fsfm.evaluate_sif()
+diurnalsfm.append(hyplant_res.Fsfm.spec_val)
 
 Fws.append(F_der)
 Fsfms.append(Fsfm)
