@@ -4,7 +4,7 @@ from r_opts import rspline,rtanh,rpoly
 from ih import prepare_input
 import matplotlib.pyplot as plt
 import scipy
-from utils import wavelets,plotting,funcs
+from utils import wavelets,plotting,funcs,results
 from SFM import SFM,SFM_BSpline
 from scipy import optimize
 from datetime import datetime
@@ -36,6 +36,8 @@ wl, upsignal, whitereference, refl, F,noF = prepare_input.synthetic(cab,lai,fe,w
 
 refnoise, whitereference = prepare_input.add_noise(whitereference,1000,noise)
 sensornoise, upsignal = prepare_input.add_noise(upsignal,1000,noise)
+
+min_results = results.retrieval_res('SCOPE','Cab_LAI',mineval,maxeval,eval_wl,'scope_res')
 
 ########################################################################
 
@@ -77,9 +79,11 @@ polyR, R_std = funcs.weighted_std(polyrefls,weights=weights,axis=0)
 
 
 F_der = upsignal-polyR*whitereference
-
 end = datetime.now()
 print(end-start)
+
+min_results.F.spec = F_der
+min_results.F.evaluate_sif()
 
 F_err = np.sqrt(np.square(sensornoise) + np.square(np.multiply(whitereference,R_std)) + np.square(np.multiply(polyR,refnoise)))
                 
