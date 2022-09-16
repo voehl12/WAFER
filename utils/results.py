@@ -115,6 +115,7 @@ class retrieval_res:
         self.R = np.zeros(len(wl))
         self.Fsfm = fluorescence(wl,self.e_wl)
         self.Finp = fluorescence(wl,self.e_wl)
+        self.iFLD = [float,float]
 
     def initiate_ts_tofile(self):
         """
