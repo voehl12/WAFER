@@ -77,7 +77,7 @@ def FLOX_SpecFit_6C(wvl, L0, LS, fsPeak, w, oWVL, alg = 'lm'):
     ARHO          = np.divide(LS,L0)
     
     # Excluding O2 absorption bands
-    mask = np.logical_and(np.logical_or(wvl < 686, wvl > 692),np.logical_or(wvl < 758, wvl > 773))
+    mask = np.logical_and(np.logical_or(wvl < 686, wvl > 690),np.logical_or(wvl < 759, wvl > 768))
     mask = np.array(mask)                                                                      
     mask = mask > 0
     
@@ -85,7 +85,7 @@ def FLOX_SpecFit_6C(wvl, L0, LS, fsPeak, w, oWVL, alg = 'lm'):
     wvlnoABS      = wvl[mask]
     ARHOnoABS     = ARHO[mask]
     # knots vector for piecewise spline
-    inds = np.linspace(1,len(wvlnoABS)-2,20-1+4,dtype=int) 
+    inds = np.linspace(1,len(wvlnoABS)-2,4,dtype=int) #20-1+4
     knots         = wvlnoABS[inds]
     
     # piece wise cubic spline
