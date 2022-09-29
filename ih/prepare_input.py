@@ -16,17 +16,15 @@ additionally, there are functions to add noise and remove the peaks in the appar
 
 """
 
-def synthetic(cab,lai,feffef,wlmin=0,wlmax=1000,completedir='../cwavelets/libradtranscope/floxseries_ae_oen/reflectance/'):
+def synthetic(cab,lai,feffef,wlmin=0,wlmax=1000,completedir='data/scope/'):
     completename = completedir+'radcomplete_{}_{:d}_{:d}_ae_conv.dat'.format(feffef,cab,lai)
     woFname = completedir+'radwoF_{}_{:d}_{:d}_ae_conv.dat'.format(feffef,cab,lai)
-    reflname = '../reflectance/szamatch/rho_scope_{}_{:d}_{:d}'.format(feffef,cab,lai)
-    albedoname = '../reflectance/szamatch/albedo_scope_{}_{:d}_{:d}'.format(feffef,cab,lai)
-    scoperef = '../LupSCOPE/szamatch/Lup_scope_{}_{:d}_{:d}'.format(feffef,cab,lai)
-    Fname = completedir+'Fcomp_{}_{:d}_{:d}_ae.dat'.format(feffef,cab,lai) #'fluorescence/F_scope_{}_{:d}_{:d}'.format(feffef,cab,lai)
+    reflname = completedir+'refl/rho_scope_{}_{:d}_{:d}'.format(feffef,cab,lai)
+    Fname = completedir+'Fcomp_{}_{:d}_{:d}_ae.dat'.format(feffef,cab,lai) 
     whiterefname = completedir+'whiteref_{}_{:d}_{:d}_ae_conv.dat'.format(feffef,cab,lai)
-    wlRname = '../reflectance/szamatch/wlR'
-    wlFname = '../reflectance/szamatch/wlF'
-    filenames = [completename,reflname,albedoname,Fname,wlRname,wlFname,scoperef,woFname]
+    wlRname = completedir+'wlR'
+    wlFname = completedir+'wlF'
+    filenames = [completename,whiterefname,reflname,Fname,wlRname,wlFname,woFname]
     array_list = []
     for name in filenames:
         arr = []
@@ -41,31 +39,21 @@ def synthetic(cab,lai,feffef,wlmin=0,wlmax=1000,completedir='../cwavelets/librad
         array_list.append(arr)
 
     wl = []
-    with open('../cwavelets/libradtranscope/floxseries_ae_oen/radcomplete_004_5_7_ae_conv.dat','r') as g:
+    with open(completedir+'radcomplete_002_5_7_ae_conv.dat','r') as g:
         for line in g:
             line = line.split()
             wl.append(float(line[0]))
     wl = np.array(wl)
     noconvwl = []
-    with open('../cwavelets/libradtranscope/series/wl_array','r') as ncw:
+    with open(completedir+'wl_array','r') as ncw:
         for line in ncw:
             line = line.split()
             noconvwl.append(float(line[0]))
     noconvwl = np.array(noconvwl)
 
-    refname = whiterefname
-    #'../cwavelets/libradtranscope/floxseries_ae_oen/whiteref_ae_conv.dat'
-    whitereference = []
-    with open(refname,'r') as wf:
-        for k,line in enumerate(wf):
-            line = line.split()
-            whitereference.append(float(line[0]))
-    whitereference = np.array(whitereference)
-
     
 
-
-    signal, refl, F, wlR, wlF, noF = array_list[0], array_list[1],array_list[3],array_list[4],array_list[5],array_list[7]
+    signal, whitereference, refl, F, wlR, wlF, noF = array_list[0], array_list[1], array_list[2], array_list[3], array_list[4], array_list[5], array_list[6]
 
     interR = interpolate.interp1d(wlR, refl,kind='cubic')
     refl = interR(wl)
@@ -136,6 +124,9 @@ def hyplant(pixelg,pixelw,wlmin=0,wlmax=1000,path='../../Data/20200625-OEN-1132-
     wl = np.array(wl)
     startind = np.argmin(np.fabs(wl-wlmin))
     endind = np.argmin(np.fabs(wl-wlmax))
+    
+    # quick solution to average over multiple pixels, only use this way, when selected pixel is savely in the middle of a large patch with expectedly similar spectra!!
+    # better would be to look for correlated spectra automatically, which has been implemented, so please get in touch if this is needed. 
     shift = [-2,-1,0,1,2]
     upwelling_samples = np.array([find_spectrum(pixelg+shift[i],data,bands,width) for i in range(len(shift))])
     upwelling = np.mean(upwelling_samples,axis=0)
@@ -151,7 +142,7 @@ def hyplant(pixelg,pixelw,wlmin=0,wlmax=1000,path='../../Data/20200625-OEN-1132-
     return wl[startind:endind], upwelling[startind:endind]/100, reference[startind:endind]/100
 
 
-def flox_single(day,time,wlmin=0,wlmax=1000,datapath = '../../FloX_Davos/FloX_JB023HT_S20210326_E20210610_C20210615.nc'):
+def flox_single(day,time,wlmin=0,wlmax=1000,datapath='data/flox/FloX_JB023HT_S20210326_E20210610_C20210615.nc'):
     day = '2021-04-23'
     timestampbegin = day+' 05:00:00'
     timestampend = day+' 17:00:00'
@@ -178,7 +169,7 @@ def flox_single(day,time,wlmin=0,wlmax=1000,datapath = '../../FloX_Davos/FloX_JB
 
     return wl, signal*1000,whitereference*1000,iflda_ref,error,time,uperrors[startind:endind]
 
-def flox_allday(day,datapath,wlmin=0,wlmax=1000):
+def flox_allday(day,datapath='data/flox/FloX_JB023HT_S20210326_E20210610_C20210615.nc',wlmin=0,wlmax=1000):
     timestampbegin = day+' 04:15:00'
     timestampend = day+' 16:50:00'
     
@@ -198,7 +189,7 @@ def flox_allday(day,datapath,wlmin=0,wlmax=1000):
     downseries = fluodata["downwelling"].sel(time=slice(timestampbegin, timestampend)).resample(time="5Min").mean("time").sel(wavelengths=slice(wlmin,wlmax))
     uperrors = fluodata["upwelling"].sel(time=slice(timestampbegin, timestampend)).resample(time="5Min").std("time").sel(wavelengths=slice(wlmin,wlmax))
     downerrors = fluodata["downwelling"].sel(time=slice(timestampbegin, timestampend)).resample(time="5Min").std("time").sel(wavelengths=slice(wlmin,wlmax))
-    
+    # if using new netcdf format (current jb_cli), metadata does not need to be called separately and ifld values collected with the following line instead:
     #iflda_ref = fluodata['sif_a_ifld'].sel(time=slice(timestampbegin, timestampend)).resample(time="5Min").mean("time")
     iflda_ref = metadata['SIF_A_ifld [mW m-2nm-1sr-1]'].sel(time=slice(timestampbegin, timestampend)).resample(time="5Min").mean("time")
     iflda_errors = metadata['SIF_A_ifld [mW m-2nm-1sr-1]'].sel(time=slice(timestampbegin, timestampend)).resample(time="5Min").std("time")
