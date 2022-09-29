@@ -19,7 +19,7 @@ plt.rcParams.update({
 ################### retrieval parameters ###############################
 
 ranges = [[660,679,670],[681,695,687],[700,720,710],[725,740,735],[745,755,750],[754,773,760],[770,800,790]]
-ranges = [[681,695,687]]
+#ranges = [[681,695,687]]
 site = 'Oensingen'
 day = '2021-04-23'
 
@@ -40,7 +40,7 @@ for range1 in ranges:
     windowmax = range1[1]
     eval_wl = range1[2]
     # Input preparation: for FloX data, the path to the input netCDF needs to be specified within the function 
-    datapath = '../../FloX_Davos/Oensingen/FloX_JB023HT_S20210326_E20210610_C20210615.nc'
+    datapath = 'data/flox/FloX_JB023HT_S20210326_E20210610_C20210615.nc'
     times, wlorig, upseriesorig, downseriesorig, uperrorsorig, downerrorsorig, iflda_ref, iflda_errors, ifldb_ref, ifldb_errors = prepare_input.flox_allday(day,datapath,wlmin=660)
     times, wl, upseries, downseries, uperrors, downerrors, iflda_ref, iflda_errors, ifldb_ref, ifldb_errors = prepare_input.flox_allday(day,datapath,wlmin=windowmin,wlmax=windowmax)
     plottimes = times.dt.strftime('%H:%M').data
@@ -95,8 +95,8 @@ for range1 in ranges:
         ts_res.iFLD[0] = iflda_ref[t]
         ts_res.iFLD[1] = ifldb_ref[t]
 
-        sfmmin = np.argmin(np.fabs(wlorig-670))
-        sfmmax = np.argmin(np.fabs(wlorig-780))
+        sfmmin = np.argmin(np.fabs(wlorig-windowmin))
+        sfmmax = np.argmin(np.fabs(wlorig-windowmax))
         sfmWL = wlorig[sfmmin:sfmmax]
         x,Fsfm,Rsfm,resnorm, exitflag, nfevas,sfmres = SFM.FLOX_SpecFit_6C(sfmWL,whitereferenceorig[sfmmin:sfmmax],signalorig[sfmmin:sfmmax],[1,1],1.,wl,alg='trf')
         ts_res.Fsfm.spec = Fsfm
@@ -237,8 +237,8 @@ for range1 in ranges:
     rmseax.plot(wl,rmse_comp)
     rmseax.set_xlabel(r'$\lambda$ [nm]')
     rmseax.set_ylabel(r'$\mathrm{RMSD}_F$ [mW nm$^{-1}$ m$^{-2}$ ster$^{-1}$]')
-    figname5 = 'rmse_oens_{:d}{:d}_{}.pdf'.format(windowmin,windowmax,day)
-    figname5tex = 'rmse_oens_{:d}{:d}_{}.tex'.format(windowmin,windowmax,day)
+    figname5 = 'rmse_oens_{:d}{:d}_{}_sfmwin.pdf'.format(windowmin,windowmax,day)
+    figname5tex = 'rmse_oens_{:d}{:d}_{}_sfmwin.tex'.format(windowmin,windowmax,day)
     rmsefig.savefig(figname5)
     tikzplotlib.save(figure=rmsefig,filepath=figname5tex)
     ones = np.linspace(0,np.max(diurnal),100)
@@ -251,8 +251,8 @@ for range1 in ranges:
     resax2.set_xlabel(r'$\lambda$ [nm]')
     resax1.set_ylabel(r'Reflectance')
     resax2.set_ylabel(r'Fluorescence [mW nm$^{-1}$ m$^{-2}$ ster$^{-1}$]')
-    figname2 = 'refls_oens_{:d}{:d}_{}_{}poly_lb.pdf'.format(windowmin,windowmax,day,polyorder)
-    figname2tex = 'refls_oens_{:d}{:d}_{}_{}poly_lb.tex'.format(windowmin,windowmax,day,polyorder)
+    figname2 = 'refls_oens_{:d}{:d}_{}_{}poly_sfmwin.pdf'.format(windowmin,windowmax,day,polyorder)
+    figname2tex = 'refls_oens_{:d}{:d}_{}_{}poly_sfmwin.tex'.format(windowmin,windowmax,day,polyorder)
     #tikzplotlib.clean_figure()
     tikzplotlib.save(figure=resfig,filepath=figname2tex)
     resfig.savefig(figname2)
@@ -298,16 +298,16 @@ for range1 in ranges:
     diax.set_xlabel(r'Time (UTC)')
     diax.legend(loc='upper left')
     ax2.legend(loc='upper right')
-    figname3 = 'diurnal_{:d}{:d}_{:d}_oens_{}_{}poly_lb.pdf'.format(windowmin,windowmax,eval_wl,day,polyorder)
-    figname3tex = 'diurnal_{:d}{:d}_{:d}_oens_{}_{}poly_lb.tex'.format(windowmin,windowmax,eval_wl,day,polyorder)
+    figname3 = 'diurnal_{:d}{:d}_{:d}_oens_{}_{}poly_sfmwin.pdf'.format(windowmin,windowmax,eval_wl,day,polyorder)
+    figname3tex = 'diurnal_{:d}{:d}_{:d}_oens_{}_{}poly_sfmwin.tex'.format(windowmin,windowmax,eval_wl,day,polyorder)
     #tikzplotlib.clean_figure()
     tikzplotlib.save(figure=difig,filepath=figname3tex)
     difig.savefig(figname3)
-    figname4 = 'scatter_{:d}_oens_{}.pdf'.format(eval_wl,day)
-    figname4tex = 'scatter_{:d}_oens_{}.tex'.format(eval_wl,day)
+    figname4 = 'scatter_{:d}_oens_{}_sfmwin.pdf'.format(eval_wl,day)
+    figname4tex = 'scatter_{:d}_oens_{}_sfmwin.tex'.format(eval_wl,day)
     tikzplotlib.save(figure=scatfig,filepath=figname4tex)
     scatfig.savefig(figname4)
     
     
-    plt.show()
+    
 
