@@ -61,7 +61,7 @@ for noise in n:
     diurnal = []
     diurnalsfm = []
     errs_750 = []
-    scope_res = results.retrieval_res('SCOPE','Cab_LAI',mineval,maxeval,eval_wl,'scope_res')
+    scope_res = results.retrieval_res('SCOPE','Cab_LAI',mineval,maxeval,eval_wl,'scope_res_sfmwind')
     
     for fe in sifeffec:
         for c,cab in enumerate(CAB):
@@ -70,7 +70,7 @@ for noise in n:
                 ############### data preparation #######################################
                 
                 wl, upsignal, whitereference, refl, F,noF = prepare_input.synthetic(cab,lai,fe,wlmin=mineval,wlmax=maxeval,completedir='../cwavelets/libradtranscope/floxseries_ae_oen/brdf/')
-                sfmwl, sfmsignal, sfmref, sfmrefl, sfmF,sfmnoF = prepare_input.synthetic(cab,lai,fe,wlmin=670,wlmax=780,completedir='../cwavelets/libradtranscope/floxseries_ae_oen/brdf/')
+                sfmwl, sfmsignal, sfmref, sfmrefl, sfmF,sfmnoF = prepare_input.synthetic(cab,lai,fe,wlmin=mineval,wlmax=maxeval,completedir='../cwavelets/libradtranscope/floxseries_ae_oen/brdf/')
                 scope_res.init_wl(wl)
                 if N == 0:
                     scope_res.initiate_ts_tofile()
@@ -260,8 +260,8 @@ compax.set_xlabel(r'$F_{{{:d}}}$ Input [mW nm$^{{-1}}$ m$^{{-2}}$ ster$^{{-1}}$]
 compax.set_ylabel(r'$F_{{{:d}}}$ Retrieved [mW nm$^{{-1}}$ m$^{{-2}}$ ster$^{{-1}}$]'.format(eval_wl))  
 compax.legend()
 compax.plot(one,one,'--',color='k')
-compfig.savefig('FL_{:d}_poly2_looseboundary_new.pdf'.format(eval_wl))
-tikzplotlib.save(figure=compfig,filepath='FL_{:d}_poly2_looseboundary_new.tex'.format(eval_wl))
+compfig.savefig('O2_{:d}_poly2_looseboundary_sfmwin.pdf'.format(eval_wl))
+tikzplotlib.save(figure=compfig,filepath='O2_{:d}_poly2_looseboundary_sfmwin.tex'.format(eval_wl))
 
 
 
