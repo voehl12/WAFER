@@ -1,4 +1,3 @@
-from ssqueezepy import ssq_cwt, ssq_stft,cwt,icwt,issq_cwt
 import numpy as np
 import pywt
 
@@ -136,9 +135,6 @@ def get_wlscales(scales):
     wlscales = 1/f
     return wlscales
 
-def icwt_ss(decomp,scales,mean,minrec):
-    res = icwt(decomp,wavelet='cmhat',scales=scales,x_mean=mean,recmin=minrec)
-    return res
 
 def icwavelet(wave,scale,minrec=0,maxrec=0):
     #scale = np.logspace(jmin,jmax,num=N_level,base=2.0)
