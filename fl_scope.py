@@ -1,6 +1,6 @@
 import numpy as np
 from scipy import interpolate, signal
-from r_opts import rspline,rtanh,rpoly
+from r_opts import rspline,rpoly
 from ih import prepare_input
 import matplotlib.pyplot as plt
 import scipy
@@ -51,6 +51,7 @@ cm = plotting.get_colormap(len(CAB)*len(LAI))
 compfig,compax = plt.subplots()
 
 N = 0
+rng = np.random.default_rng(seed=42)
 #exfig,(exax1,exax2) = plt.subplots(1,2)
 for noise in n:
     Fgrid = np.zeros((len(CAB),len(LAI)))
@@ -85,10 +86,10 @@ for noise in n:
                 
                 inpR = noF/whitereference
                 
-                refnoise, whitereference = prepare_input.add_noise(whitereference,1000,noise)
-                sensornoise, upsignal = prepare_input.add_noise(upsignal,1000,noise)
-                sfmnoise, sfmref =  prepare_input.add_noise(sfmref,1000,noise)
-                sfmnoise, sfmsignal =  prepare_input.add_noise(sfmsignal,1000,noise)
+                refnoise, whitereference = prepare_input.add_noise(whitereference,1000,noise,rng)
+                sensornoise, upsignal = prepare_input.add_noise(upsignal,1000,noise,rng)
+                sfmnoise, sfmref =  prepare_input.add_noise(sfmref,1000,noise,rng)
+                sfmnoise, sfmsignal =  prepare_input.add_noise(sfmsignal,1000,noise,rng)
 
                 ########################################################################
 
@@ -116,13 +117,21 @@ for noise in n:
                     newdecomp = wavelets.decomp(jmin,jmax,nlevels)
                     newdecomp.adjust_levels(upsignal)
                     newdecomp.create_comps(upsignal)
-                    
+                    figF,axF = plt.subplots(1,2,figsize=(9/1.3,3.9/1.5))
+                    figF,axF,pF2 = plotting.plot_powerspectrum(wl,newdecomp.comps,newdecomp.scales,wavelets.get_wlscales(newdecomp.scales*(wl[1]-wl[0])),(figF,axF),1,widths=True)
                     ######################## plotting ######################################################
-                    plotting.plot_powerspectrum(wl,newdecomp.comps,newdecomp.scales,wavelets.get_wlscales(newdecomp.scales*(wl[1]-wl[0])),'upsignal_decomp')
                     decfig,decax = plt.subplots()
                     decax.plot(wl,newdecomp.comps[5],label=r'$\hat{s}$',color='forestgreen')
                     newdecomp.create_comps(whitereference)
-                    plotting.plot_powerspectrum(wl,newdecomp.comps,newdecomp.scales,wavelets.get_wlscales(newdecomp.scales*(wl[1]-wl[0])),'whitereference_decomp')
+                    figF,axF,pF1 = plotting.plot_powerspectrum(wl,newdecomp.comps,newdecomp.scales,wavelets.get_wlscales(newdecomp.scales*(wl[1]-wl[0])),(figF,axF),0,levels=True,colorbar=True)
+                   
+                    
+                    
+                    figF.subplots_adjust(wspace=0.3)
+                    cbar_ax = figF.add_axes([0.5, 0.15, 0.015, 0.7])
+                    cbar = figF.colorbar(pF1, cax=cbar_ax)
+                    cbar.ax.tick_params(labelsize=8) 
+                    figF.savefig('decomps_ex.pdf',dpi=300,bbox_inches="tight")
                     decax.plot(wl,newdecomp.comps[5],label=r'$\hat{s_0}$',color='tab:orange')
                     ax2 = decax.twinx()
                     ax2.plot(wl,upsignal,color='forestgreen',linewidth=0.8,linestyle='dashed',label=r'$s$')
@@ -158,13 +167,7 @@ for noise in n:
                 polyrefls = np.array(polyrefls)
                 polyR, R_std = funcs.weighted_std(polyrefls,weights=weights,axis=0)
                 scope_res.R = polyR
-                
-
-                """ plt.figure()
-                plt.plot(ress[0],label='Initial Residual')
-                plt.plot(ress[1],label='Final Residual')
-                plt.legend()
-                plt.show() """
+      
 
                 ########################################################################
 
@@ -173,7 +176,7 @@ for noise in n:
                 F_param = np.polyfit(wl,F_der,1)
                 Finterp = np.poly1d(F_param)
                 F_smooth = Finterp(wl)
-                scope_res.write_ts_tofile('{:d}_{:d}'.format(cab,lai))
+                scope_res.write_ts_tofile('{:d}_{:d}_rerun'.format(cab,lai))
 
                 
                 ################## errors and statistics #################################
@@ -210,7 +213,7 @@ for noise in n:
     
     
     ################## more plotting and statistics  #################################
-    meshname = 'scope_rsme_{:d}{:d}_{}.pdf'.format(mineval,maxeval,noise)
+    meshname = 'scope_rsme_{:d}{:d}_{}_rerun.pdf'.format(mineval,maxeval,noise)
     if noise == 0:
         meshtext = r'{:d}-{:d} nm'.format(mineval,maxeval)
         #resax.plot(maes,'.',label='FL, no noise')
@@ -218,16 +221,25 @@ for noise in n:
         r2_s = funcs.calc_rsquared(np.array(diurnalsfm),np.array(inputs))
         rsme_w = funcs.calc_rmse(np.array(diurnal),np.array(inputs))
         rsme_s = funcs.calc_rmse(np.array(diurnalsfm),np.array(inputs))
+        rrsme_w = funcs.calc_rrmse(np.array(diurnal),np.array(inputs))
+        rrsme_s = funcs.calc_rrmse(np.array(diurnalsfm),np.array(inputs))
+
         compax.errorbar(inputs,diurnal,errs_750,fmt='.',label=r'no noise, $R^2 = {:.2f}$'.format(r2_w),color='tab:blue')
         compax.plot(inputs,diurnalsfm,'*',label=r'SFM, no noise, $R^2 = {:.2f}$'.format(r2_s),color='tab:blue')
         allmax = np.maximum(diurnal,inputs)
         one = np.linspace(0,np.max(allmax),100)    
         w_coeffs,w_cov = optimize.curve_fit(funcs.fitfct_linear,inputs,diurnal)#,sigma=errs_750)
-        print(w_coeffs,r2_w,rsme_w)
+        print(w_coeffs,r2_w,rsme_w,rrsme_w)
         compax.plot(one,funcs.fitfct_linear(one,*w_coeffs),color='tab:blue',linewidth=0.4)
         s_coeffs,s_cov = optimize.curve_fit(funcs.fitfct_linear,inputs,diurnalsfm)
-        print(s_coeffs,r2_s,rsme_s)
+        print(s_coeffs,r2_s,rsme_s,rrsme_s)
         compax.plot(one,funcs.fitfct_linear(one,*s_coeffs),color='tab:blue',linewidth=0.4)
+        # r^2 with respect to the regression line (meaningless in this scenario, but routinely done)
+        r2_w_reg = funcs.calc_rsquared(np.array(diurnal),funcs.fitfct_linear(np.array(inputs),*w_coeffs))
+        r2_s_reg = funcs.calc_rsquared(np.array(diurnalsfm),funcs.fitfct_linear(np.array(inputs),*s_coeffs))
+        print(r2_w_reg,r2_s_reg)
+        print(np.mean(np.array(diurnal-np.array(inputs))),np.mean(np.array(diurnalsfm-np.array(inputs))))
+        
      
         
     else:
@@ -237,20 +249,26 @@ for noise in n:
         r2_s_n = funcs.calc_rsquared(np.array(diurnalsfm),np.array(inputs))
         rsme_w_n = funcs.calc_rmse(np.array(diurnal),np.array(inputs))
         rsme_s_n = funcs.calc_rmse(np.array(diurnalsfm),np.array(inputs))
+        rrsme_w_n = funcs.calc_rrmse(np.array(diurnal),np.array(inputs))
+        rrsme_s_n = funcs.calc_rrmse(np.array(diurnalsfm),np.array(inputs))
         compax.errorbar(inputs,diurnal,errs_750,fmt='.',label=r'noise, $R^2 = {:.2f}$'.format(r2_w_n),color='tab:red')
         compax.plot(inputs,diurnalsfm,'*',label=r'SFM, noise, $R^2 = {:.2f}$'.format(r2_s_n),color='tab:red')  
         allmax = np.maximum(diurnal,inputs)
         one = np.linspace(0,np.max(allmax),100)    
         w_coeffs,w_cov = optimize.curve_fit(funcs.fitfct_linear,inputs,diurnal,sigma=errs_750)
-        print(w_coeffs,r2_w_n,rsme_w_n)
+        print(w_coeffs,r2_w_n,rsme_w_n,rrsme_w_n)
         compax.plot(one,funcs.fitfct_linear(one,*w_coeffs),color='tab:red',linewidth=0.4)
         s_coeffs,s_cov = optimize.curve_fit(funcs.fitfct_linear,inputs,diurnalsfm)
-        print(s_coeffs,r2_s_n,rsme_s_n)
+        print(s_coeffs,r2_s_n,rsme_s_n,rrsme_s_n)
         compax.plot(one,funcs.fitfct_linear(one,*s_coeffs),color='tab:red',linewidth=0.4)
+        r2_w_reg_n = funcs.calc_rsquared(np.array(diurnal),funcs.fitfct_linear(np.array(inputs),*w_coeffs))
+        r2_s_reg_n = funcs.calc_rsquared(np.array(diurnalsfm),funcs.fitfct_linear(np.array(inputs),*s_coeffs))
+        print(r2_w_reg_n,r2_s_reg_n)
+        print(np.mean(np.array(diurnal-np.array(inputs))),np.mean(np.array(diurnalsfm-np.array(inputs))))
         
     plotting.plot_3d(LAI,CAB,Fgrid,meshname,meshtext)
     resax.legend()
-    resfig.savefig('spectral_{:d}_{:d}_poly2_looseboundary_new.pdf'.format(eval_wl,noise))
+    resfig.savefig('spectral_{:d}_{:d}_poly2_looseboundary_rerun.pdf'.format(eval_wl,noise))
     #exax2.legend(loc='upper left')
     #tikzplotlib.save(figure=exfig,filepath='example_specs.tex')
  
@@ -260,8 +278,8 @@ compax.set_xlabel(r'$F_{{{:d}}}$ Input [mW nm$^{{-1}}$ m$^{{-2}}$ ster$^{{-1}}$]
 compax.set_ylabel(r'$F_{{{:d}}}$ Retrieved [mW nm$^{{-1}}$ m$^{{-2}}$ ster$^{{-1}}$]'.format(eval_wl))  
 compax.legend()
 compax.plot(one,one,'--',color='k')
-compfig.savefig('O2_{:d}_poly2_looseboundary_sfmwin.pdf'.format(eval_wl))
-tikzplotlib.save(figure=compfig,filepath='O2_{:d}_poly2_looseboundary_sfmwin.tex'.format(eval_wl))
+compfig.savefig('O2_{:d}_poly2_looseboundary_sfmwin_rerun.pdf'.format(eval_wl))
+tikzplotlib.save(figure=compfig,filepath='O2_{:d}_poly2_looseboundary_sfmwin_rerun.tex'.format(eval_wl))
 
 
 
