@@ -202,7 +202,7 @@ def flox_allday(day,datapath='data/flox/FloX_JB023HT_S20210326_E20210610_C202106
     return times, wl, upseries*1000, downseries*1000, uperrors, downerrors, iflda_ref, iflda_errors, ifldb_ref, ifldb_errors
 
 
-def add_noise(data,snr,switch,N=10):
+def add_noise(data,snr,switch,rng,N=10):
     sigmas = []
     if switch == 0:
         sigmas = np.zeros(len(data))
@@ -210,17 +210,11 @@ def add_noise(data,snr,switch,N=10):
     else:
         noisydata = np.zeros((N,len(data)))
         for j in range(N):
-
             s0 = 0
             newdata = np.zeros(len(data))
-            #SNR = []
             for i,val in enumerate(data):
                 sigma = val/snr
-                #sigma = 0.3
-                #sigma = 1.0
-                #snr = val/sigma
-                s0 = np.random.normal(0.0, sigma)
-                #SNR.append(snr)
+                s0 = rng.normal(0.0, sigma)
                 sigmas.append(s0)
                 newval = val + s0
                 newdata[i] = newval
