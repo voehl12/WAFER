@@ -30,5 +30,8 @@ def calc_rsquared(y,y_m):
 def calc_rmse(y,y_m):
     return np.sqrt(np.mean(np.square(y-y_m)))
 
+def calc_rrmse(y,y_m):
+    return np.sqrt(np.mean(np.square((y-y_m)/y_m)))
+
 def fitfct_linear(x,a,b):
     return a*x + b
