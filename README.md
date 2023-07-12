@@ -1,4 +1,4 @@
-# SIF retrieval methods (sif_rms)
+# SIF retrieval methods
 This repository contains scripts for several SIF (sun induced fluorescence) retrieval methods from different datasets and can be used as a toolbox. 
 The focus lies on a newly developed method based on wavelet decompositions of the measured upwelling and reference radiance spectra. 
 All scripts are written for Python3 and provided under the GNU General Public License version 3.  
