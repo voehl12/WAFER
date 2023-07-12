@@ -6,10 +6,11 @@ from ih import prepare_input
 import matplotlib.pyplot as plt
 import scipy
 from utils import wavelets,plotting,funcs,results
-from SFM import SFM,SFM_BSpline
+from SFM import SFM
 from scipy import optimize
 import tikzplotlib
 from matplotlib import rc
+import time
 #plt.rcParams['text.usetex'] = True
 plt.rcParams.update({
     "text.usetex": True,
@@ -19,10 +20,14 @@ plt.rcParams.update({
 ################### retrieval parameters ###############################
 
 ranges = [[660,679,670],[681,695,687],[700,720,710],[725,740,735],[745,755,750],[754,773,760],[770,800,790]]
-#ranges = [[681,695,687]]
+ranges = [[681,695,687],[745,755,750],[754,773,760]]
 site = 'Oensingen'
 day = '2021-04-23'
 
+# SFM settings:
+numknots = 4 
+
+# WAFER settings
 jmin = -2.7
 jmax = 4
 nlevels = 2048
@@ -39,13 +44,13 @@ for range1 in ranges:
     windowmin = range1[0]
     windowmax = range1[1]
     eval_wl = range1[2]
-    # Input preparation: for FloX data, the path to the input netCDF needs to be specified within the function 
+    # Input preparation
     datapath = 'data/flox/FloX_JB023HT_S20210326_E20210610_C20210615.nc'
     times, wlorig, upseriesorig, downseriesorig, uperrorsorig, downerrorsorig, iflda_ref, iflda_errors, ifldb_ref, ifldb_errors = prepare_input.flox_allday(day,datapath,wlmin=660)
     times, wl, upseries, downseries, uperrors, downerrors, iflda_ref, iflda_errors, ifldb_ref, ifldb_errors = prepare_input.flox_allday(day,datapath,wlmin=windowmin,wlmax=windowmax)
     plottimes = times.dt.strftime('%H:%M').data
 
-    ts_res = results.retrieval_res(site,day,windowmin,windowmax,eval_wl,'timeseries_poly2_R_F')
+    ts_res = results.retrieval_res(site,day,windowmin,windowmax,eval_wl,'timeseries_poly2_R_F_samewindow')
     ts_res.init_wl(wl)
     ts_res.initiate_ts_tofile()
 
@@ -73,14 +78,14 @@ for range1 in ranges:
     rangeax.set_ylabel(r'Radiance [mW nm$^{-1}$ m$^{-2}$ ster$^{-1}$]')
     figname1 = 'FloX_examplerange_{:d}{:d}_oens_{}.pdf'.format(windowmin,windowmax,day)
     figname1tex = 'FloX_examplerange_{:d}{:d}_oens_{}.tex'.format(windowmin,windowmax,day)
-    tikzplotlib.save(figure=rangefig,filepath=figname1tex)
-    rangefig.savefig(figname1)
+    #tikzplotlib.save(figure=rangefig,filepath=figname1tex)
+    #rangefig.savefig(figname1)
     
     ########################################################################
 
         
-    for t,time in enumerate(times):
-        print(t,time.data)
+    for t,ti in enumerate(times):
+        print(t,ti.data)
         ############### data preparation #######################################
         uperror = uperrors[t]
         downerror = downerrors[t]
@@ -94,18 +99,20 @@ for range1 in ranges:
         ############### iFLD and SFM #############
         ts_res.iFLD[0] = iflda_ref[t]
         ts_res.iFLD[1] = ifldb_ref[t]
-
+        tic = time.perf_counter()
         sfmmin = np.argmin(np.fabs(wlorig-windowmin))
         sfmmax = np.argmin(np.fabs(wlorig-windowmax))
         sfmWL = wlorig[sfmmin:sfmmax]
-        x,Fsfm,Rsfm,resnorm, exitflag, nfevas,sfmres = SFM.FLOX_SpecFit_6C(sfmWL,whitereferenceorig[sfmmin:sfmmax],signalorig[sfmmin:sfmmax],[1,1],1.,wl,alg='trf')
+        x,Fsfm,Rsfm,resnorm, exitflag, nfevas,sfmres = SFM.SpecFit(sfmWL,whitereferenceorig[sfmmin:sfmmax],signalorig[sfmmin:sfmmax],[1,1],1.,wl,numknots,alg='trf')
         ts_res.Fsfm.spec = Fsfm
         sfm_residuals.append(sfmres)
         ts_res.Fsfm.evaluate_sif()
+        toc = time.perf_counter()
+        print(toc-tic)
         diurnalsfm.append(ts_res.Fsfm.spec_val)
         
         ############### initial guess and reflectance optimization #############
-
+        tic = time.perf_counter()
         appref = np.divide(upsignal,whitereference)
         nopeak_wl, nopeak_appref = prepare_input.rm_peak(wl,appref) 
 
@@ -160,6 +167,8 @@ for range1 in ranges:
         F_smooth = Finterp(wl)
 
         ts_res.F.evaluate_sif()
+        toc = time.perf_counter()
+        print(toc-tic)
         diurnal.append(ts_res.F.spec_val)
 
         ########################################################################
@@ -198,8 +207,8 @@ for range1 in ranges:
 
     ################## more plotting and statistics  #################################
     plt.figure()
-    plt.plot(diurnal,np.divide(np.array(diurnal)-np.array(diurnalsfm),diurnal),'.',label='sfm')
-    plt.plot(diurnal,np.divide(np.array(diurnal)-np.array(ifldb_ref),diurnal),'.',label='ifld')
+    plt.plot(diurnal,np.divide(np.array(diurnal)-np.array(diurnalsfm),diurnal),'.',label='sfm relative')
+    plt.plot(diurnal,np.divide(np.array(diurnal)-np.array(ifldb_ref),diurnal),'.',label='ifld relative')
     plt.legend()
 
     reldevs_sfm = np.divide(np.array(diurnal)-np.array(diurnalsfm),diurnal) 
@@ -239,7 +248,7 @@ for range1 in ranges:
     rmseax.set_ylabel(r'$\mathrm{RMSD}_F$ [mW nm$^{-1}$ m$^{-2}$ ster$^{-1}$]')
     figname5 = 'rmse_oens_{:d}{:d}_{}_sfmwin.pdf'.format(windowmin,windowmax,day)
     figname5tex = 'rmse_oens_{:d}{:d}_{}_sfmwin.tex'.format(windowmin,windowmax,day)
-    rmsefig.savefig(figname5)
+    #rmsefig.savefig(figname5)
     tikzplotlib.save(figure=rmsefig,filepath=figname5tex)
     ones = np.linspace(0,np.max(diurnal),100)
     datax.set_xlabel(r'$\lambda$ [nm]')
@@ -254,8 +263,8 @@ for range1 in ranges:
     figname2 = 'refls_oens_{:d}{:d}_{}_{}poly_sfmwin.pdf'.format(windowmin,windowmax,day,polyorder)
     figname2tex = 'refls_oens_{:d}{:d}_{}_{}poly_sfmwin.tex'.format(windowmin,windowmax,day,polyorder)
     #tikzplotlib.clean_figure()
-    tikzplotlib.save(figure=resfig,filepath=figname2tex)
-    resfig.savefig(figname2)
+    #tikzplotlib.save(figure=resfig,filepath=figname2tex)
+    #resfig.savefig(figname2)
     
     
     rsme_sfm = funcs.calc_rmse(np.array(diurnal),np.array(diurnalsfm))
@@ -301,12 +310,14 @@ for range1 in ranges:
     figname3 = 'diurnal_{:d}{:d}_{:d}_oens_{}_{}poly_sfmwin.pdf'.format(windowmin,windowmax,eval_wl,day,polyorder)
     figname3tex = 'diurnal_{:d}{:d}_{:d}_oens_{}_{}poly_sfmwin.tex'.format(windowmin,windowmax,eval_wl,day,polyorder)
     #tikzplotlib.clean_figure()
-    tikzplotlib.save(figure=difig,filepath=figname3tex)
-    difig.savefig(figname3)
+    #tikzplotlib.save(figure=difig,filepath=figname3tex)
+    #difig.savefig(figname3)
     figname4 = 'scatter_{:d}_oens_{}_sfmwin.pdf'.format(eval_wl,day)
     figname4tex = 'scatter_{:d}_oens_{}_sfmwin.tex'.format(eval_wl,day)
-    tikzplotlib.save(figure=scatfig,filepath=figname4tex)
-    scatfig.savefig(figname4)
+    #tikzplotlib.save(figure=scatfig,filepath=figname4tex)
+    #scatfig.savefig(figname4)
+
+    plt.show()
     
     
     

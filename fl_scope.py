@@ -5,7 +5,7 @@ from ih import prepare_input
 import matplotlib.pyplot as plt
 import scipy
 from utils import wavelets,plotting,funcs,results
-from SFM import SFM,SFM_BSpline
+from SFM import SFM
 from scipy import optimize
 import tikzplotlib
 from matplotlib import rc
@@ -29,9 +29,12 @@ for i in range(2,8):
 
 LAI = [1,2,3,4,5,6,7]
 
+# SFM settings:
+numknots = 4
+
 # noise: n=1, no noise added: n=0
 n = [0,1]
-
+# WAFER settings:
 # order of polynomial for reflectance:
 polyorder = 2
 
@@ -95,7 +98,7 @@ for noise in n:
 
                 ######################### SFM retrieval ################################
 
-                x,Fsfm,Rsfm,resnorm, exitflag, nfevas,sfmres = SFM.FLOX_SpecFit_6C(sfmwl,sfmref,sfmsignal,[1,1],1.,wl,alg='trf')
+                x,Fsfm,Rsfm,resnorm, exitflag, nfevas,sfmres = SFM.SpecFit(sfmwl,sfmref,sfmsignal,[1,1],1.,wl,numknots,alg='trf')
                 scope_res.Fsfm.spec = Fsfm
 
                 ########################################################################

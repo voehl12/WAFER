@@ -6,7 +6,7 @@ from ih import prepare_input
 import matplotlib.pyplot as plt
 import scipy
 from utils import wavelets,plotting,funcs,results
-from SFM import SFM,SFM_BSpline
+from SFM import SFM
 from scipy import optimize
 import tikzplotlib
 from matplotlib import rc
@@ -28,6 +28,10 @@ windowmin = ranges[0]
 windowmax = ranges[1]
 eval_wl = ranges[2]
 
+# SFM settings:
+numknots = 4
+
+# WAFER settings
 polyorder = 2
 
 jmin = -2.0
@@ -50,7 +54,7 @@ hyplant_res.init_wl(wl)
 sfmmin = np.argmin(np.fabs(wlorig-670))
 sfmmax = np.argmin(np.fabs(wlorig-780))
 sfmWL = wlorig[sfmmin:sfmmax]
-x,Fsfm,Rsfm,resnorm, exitflag, nfevas,sfmres = SFM.FLOX_SpecFit_6C(sfmWL,referenceorig[sfmmin:sfmmax],upsignalorig[sfmmin:sfmmax],[1,1],1.,wl,alg='trf')
+x,Fsfm,Rsfm,resnorm, exitflag, nfevas,sfmres = SFM.SpecFit(sfmWL,referenceorig[sfmmin:sfmmax],upsignalorig[sfmmin:sfmmax],[1,1],1.,wl,numknots,alg='trf')
 hyplant_res.Fsfm.spec = Fsfm
 
 ########################################################################
