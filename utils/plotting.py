@@ -10,28 +10,35 @@ plt.rcParams.update({
     "font.serif": ["Computer Modern Roman"]})
 
 
-def plot_powerspectrum(wl,spectrum,scales,wlscales,filename):
-    figF,axF = plt.subplots() #figsize=(8,6)
+def plot_powerspectrum(wl,spectrum,scales,wlscales,figparams,pos,levels=False,widths=False,colorbar=False):
+    figF,axF = figparams #figsize=(8,6)
     normalizedsensorspec = [spectrum[i]/scales[i]**0.5 for i in range(len(spectrum))]
     normalizedsensorspec = np.array(normalizedsensorspec)
     plotspec = normalizedsensorspec
-    pF = axF.pcolor(wl,np.arange(len(spectrum)),plotspec,cmap='RdBu',shading='auto',vmin=-5,vmax=5)
-    colF = figF.colorbar(pF,ax=axF,orientation='horizontal')
-    ax2 = axF.twinx()
+    plotax = axF[pos]
+    pF = plotax.pcolor(wl,np.arange(len(spectrum)),plotspec,cmap='RdBu',shading='auto',vmin=-5,vmax=5)
+    
+    ax2 = plotax.twinx()
     ax2.pcolor(wl,wlscales,plotspec,cmap='RdBu',shading='auto',vmin=-5,vmax=5)
     #ax2.set_yticks(axF.get_yticks())
     #ax2.set_ylim(axF.get_ylim())
     figF.canvas.draw()
     #axF.plot(wl,signal/np.max(signal)*30,color='black',linewidth=3)
     #labels = [int(i.get_position()[1]) for i in ax2.get_yticklabels()]
-      
-    ax2.set_ylabel(r'peak width [nm]')
+    if widths:
+        ax2.set_ylabel(r'peak width [nm]')
+        plotax.set_yticklabels([])
     #rect = patches.Rectangle((wl[1], 29), wl[-2]-wl[1], 1, linewidth=1, edgecolor='r', facecolor='none')
     #axF.add_patch(rect)
-    axF.set_xlabel(r'$\lambda$ [nm]')
-    axF.set_ylabel(r'level')
-    figF.savefig(filename+'.pdf')
-    tikzplotlib.save(figure=figF,filepath=filename+'.tex')
+    plotax.set_xlabel(r'$\lambda$ [nm]')
+    if levels:
+        plotax.set_ylabel(r'level')
+    if colorbar:
+        #colF = figF.colorbar(pF,ax=axF)
+        ax2.set_yticklabels([])
+    plotax.set_xlim(wl[0],wl[-1])
+    return figF,axF,pF
+    
     
 def get_colormap(N,m='viridis'):
     my_cmap = cm.get_cmap(m, N)
