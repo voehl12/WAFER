@@ -1,15 +1,10 @@
-import wave
 import numpy as np
-from scipy import interpolate, signal
 from r_opts import rpoly
 from ih import prepare_input
 import matplotlib.pyplot as plt
-import scipy
 from utils import wavelets,plotting,funcs,results
 from SFM import SFM
-from scipy import optimize
 import tikzplotlib
-from matplotlib import rc
 import time
 #plt.rcParams['text.usetex'] = True
 plt.rcParams.update({

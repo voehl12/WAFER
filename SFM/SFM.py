@@ -4,7 +4,7 @@ import numpy as np
 
 #### Python adapted from https://gitlab.com/ltda/flox-specfit
 
-def FLOX_SpecFit_6C_funct(x,L0,wvl,sp,inp,knots):
+def SpecFit_funct(x,rad_d,wvl,inp,knots):
 
     """ 
     Input:
@@ -12,7 +12,6 @@ def FLOX_SpecFit_6C_funct(x,L0,wvl,sp,inp,knots):
     x: fit parameters, i.e. peak heights of fluorescence and heights of all reflectance knots
     L0: downwelling radiance
     wvl: corresponding wavelength array
-    sp: spline to apparent reflectance
     inp: upwelling radiance
     knots: wavelength positions of the knots
 
@@ -21,41 +20,40 @@ def FLOX_SpecFit_6C_funct(x,L0,wvl,sp,inp,knots):
     Difference of modelled and input radiance (this is what is going to be minimized)
     """
 
-    # --- RHO
+    #### reflectance model ####
 
     knotvals   = x[2:]
     interp = interpolate.UnivariateSpline(knots,knotvals,s=0)
-    RHO          = interp(wvl)
+    refl         = interp(wvl) 
+
+    #### fluorescence model ####
+
+    # red peak
+    lorentz_x  = (wvl - 684)/10.
+    f_red = x[0]/(lorentz_x**2 + 1.)
+
+    # far red peak
+    lorentz_x       = (wvl - 735)/25.
+    f_fred = x[1]/(lorentz_x**2 + 1.)
+
+    # full fluorescence, modulated by reflectance
+    fluo = np.multiply(f_fred + f_red,refl)
+
+    # forward model upwelling radiance
+    rad_u_m = np.multiply(refl,rad_d) + fluo
+
+    # return the residual (to be minimized):
+    return rad_u_m-inp
 
 
-
-    # --- FLUORESCENCE
-
-    # -- FAR-RED
-    u2       = (wvl - 735)/25.
-    FFAR_RED = x[1]/(u2**2 + 1.)
-
-    # -- RED
-    u2       = (wvl - 684)/10.
-    FRED     = x[0]/(u2**2 + 1.)
-
-    # -- FULL SPECTRUM
-    F        = np.multiply((FFAR_RED + FRED),(1.-(1.-RHO)))
-
-
-    # -- UPWARD RADIANCE
-    y        = np.multiply(RHO,L0) + F
-    return y-inp
-
-
-def FLOX_SpecFit_6C(wvl, L0, LS, fsPeak, w, oWVL, alg = 'lm'):
+def SpecFit(wvl,rad_d,rad_u,fg_peak,w,owl,numknots,alg = 'lm'):
 
     """ 
     Input: 
     
     wvl: wavelength-array, 
-    L0: downwelling radiance, 
-    LS: reflected radiance,
+    rad_d: downwelling radiance, 
+    rad_u: upwelling radiance,
     --> lengths need to match up
     initial peak height fsPeak: array of first guesses in units of input radiances ([1,1] should suffice), 
     weights: array of length LS (can also be set to one), 
@@ -73,91 +71,72 @@ def FLOX_SpecFit_6C(wvl, L0, LS, fsPeak, w, oWVL, alg = 'lm'):
 
     """
 
-    # Apparent Reflectance - ARHO -
-    ARHO          = np.divide(LS,L0)
+    # Apparent Reflectance 
+    app_refl          = np.divide(rad_d,rad_u)
     
-    # Excluding O2 absorption bands
+    # create mask to exclude O2 bands
     mask = np.logical_and(np.logical_or(wvl < 686, wvl > 690),np.logical_or(wvl < 759, wvl > 768))
     mask = np.array(mask)                                                                      
     mask = mask > 0
     
     wvl = np.array(wvl)
-    wvlnoABS      = wvl[mask]
-    ARHOnoABS     = ARHO[mask]
+    wvlnoO2 = wvl[mask]
+    app_reflnoO2 = app_refl[mask]
+    
     # knots vector for piecewise spline
-    inds = np.linspace(1,len(wvlnoABS)-2,4,dtype=int) #20-1+4
-    knots         = wvlnoABS[inds]
+    inds = np.linspace(1,len(wvlnoO2)-2,numknots,dtype=int) 
+    knots = wvlnoO2[inds]
     
     # piece wise cubic spline
-    sp = interpolate.LSQUnivariateSpline(wvlnoABS,ARHOnoABS,knots)
-    firsspline = sp(wvl)
-    p_r           = sp(wvl)[inds]
+    sp = interpolate.LSQUnivariateSpline(wvlnoO2,app_reflnoO2,knots)
+    p_r = sp(wvl)[inds]
     
-    # --- FIRST GUESS VECTOR
-
-    x0            = [fsPeak[0],fsPeak[1]]
+    # first guesses of peak values and reflectance knots:
+    x0 = [fg_peak[0],fg_peak[1]]
     for val in p_r:
         x0.append(val)
     
+    # weight for the upwelling radiance (if any)
+    rad_u_w = np.multiply(rad_u,w)   # with weight
     
-    
-    # --- WEIGHTING SCHEME
-
-    LS_w          = np.multiply(LS,w)   # with weight
-    # --- OPTIMIZATION
-
+    # optimization part: least squares minimization of the residual returned by SpecFit_funct:
     if alg == 'trf':
-        res = least_squares(FLOX_SpecFit_6C_funct,x0,method='trf',max_nfev=100,args=(L0,wvl,sp,LS_w,knots))     
+        res = least_squares(SpecFit_funct,x0,method='trf',max_nfev=100,args=(rad_d,wvl,rad_u_w,knots))     
         x, resnorm,residual,exitflag,nfevas = res.x,res.cost,res.fun,res.status,res.nfev
-        
-        
         if exitflag == -1:
             resnorm = np.NaN
-
     elif alg == 'lm':
-        res = least_squares(FLOX_SpecFit_6C_funct,x0,method='lm',max_nfev=6,args=(L0,wvl,sp,LS_w,knots))    
+        res = least_squares(SpecFit_funct,x0,method='lm',max_nfev=6,args=(rad_d,wvl,rad_u_w,knots))    
         x, resnorm,residual,exitflag,nfevas = res.x,res.cost,res.fun,res.status, res.nfev
-
     else:
         print('Check Optimization algorithm')
         exit(0)
           
-    
+    # optimized spectra for output:
 
-    # --- OUTPUT SPECTRA
-
-    # -- Reflectance 
-    knotvals   = x[2:]
+    #### reflectance model #### 
+    knotvals = x[2:]
     interp = interpolate.UnivariateSpline(knots,knotvals,s=0)
-    RHO          = interp(oWVL)
-    r_wvl        = RHO
+    refl = interp(owl)
+    
+    #### fluorescence model ####
 
+    # red peak
+    lorentz_x = (owl - 684)/10.
+    f_red = x[0]/(lorentz_x**2 + 1.)
+    # far red peak
+    lorentz_x = (owl - 735)/25.
+    f_fred = x[1]/(lorentz_x**2 + 1.)
 
-    # -- Sun-Induced Fluorescence
-    # - FAR-RED 
-    u2       = (oWVL - 735)/25.
-    FFAR_RED = x[1]/(u2**2 + 1.)
+    # fluorescence spectrum, modulated with reflectance
+    fluo = np.multiply(f_fred + f_red,refl)
 
-    # - RED 
-    u2       = (oWVL - 684)/10.
-    FRED     = x[0]/(u2**2 + 1.)
+    # final at-sensor modeled radiance
+    rad_u_m        = SpecFit_funct(x,rad_d,wvl,rad_u_w,knots)
 
-    # - FULL SPECTRUM
-    f_wvl    = np.multiply((FFAR_RED + FRED),(1-(1-RHO)))
+    # summary statistics
+    residual     = rad_u_m - rad_u
+    rmse         = np.sqrt(np.mean(np.square(rad_u_m - rad_u)))
+    rrmse        = np.sqrt(np.mean(np.square(np.divide((rad_u_m - rad_u),rad_u))))*100. 
 
-
-    # -- At-sensor modeled radiance
-    LSmod        = FLOX_SpecFit_6C_funct(x,L0,wvl,sp,LS_w,knots)
-
-
-    # --  RETRIEVAL STATS
-    residual     = LSmod - LS
-    rmse         = np.sqrt(np.mean(np.square(LSmod - LS)))
-    rrmse        = np.sqrt(np.mean(np.square(np.divide((LSmod - LS),LS))))*100. 
-
-
-
-
-
-
-    return x, f_wvl, r_wvl, resnorm, exitflag, nfevas, residual
+    return x, fluo, refl, resnorm, exitflag, nfevas, residual
